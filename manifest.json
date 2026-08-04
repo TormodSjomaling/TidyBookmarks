@@ -10,10 +10,10 @@
   },
   "permissions": ["bookmarks", "storage", "favicon"],
   "chrome_url_overrides": {
-    "newtab": "newtab.html"
+    "newtab": "src/newtab/newtab.html"
   },
   "options_ui": {
-    "page": "options.html",
+    "page": "src/options/options.html",
     "open_in_tab": true
   }
 }

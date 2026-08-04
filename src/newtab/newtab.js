@@ -1,7 +1,6 @@
 let folderMeta = {};
 let settings = { faviconOnlyDefault: true };
-let draggedBookmarkEl = null;
-let draggedFolderEl = null;
+let draggedUnit = null;
 
 const ARCHIVE_ICON_SVG =
   '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="12" rx="1"></rect><path d="M3 8l1.5-4h15L21 8"></path><line x1="9.5" y1="13" x2="14.5" y2="13"></line></svg>';
@@ -165,68 +164,6 @@ function renderChildren(children, container) {
   renderFolderGroup(folders, container);
 }
 
-function handleFolderDragStart(e) {
-  draggedFolderEl = e.currentTarget.parentElement;
-  e.dataTransfer.effectAllowed = "move";
-  e.dataTransfer.setData("text/plain", draggedFolderEl.dataset.folderId);
-  draggedFolderEl.classList.add("dragging");
-}
-
-function canDropFolderOn(targetHeader) {
-  const targetFolder = targetHeader.parentElement;
-  return (
-    draggedFolderEl &&
-    targetFolder !== draggedFolderEl &&
-    targetFolder.parentElement === draggedFolderEl.parentElement &&
-    targetFolder.dataset.parentId === draggedFolderEl.dataset.parentId
-  );
-}
-
-function handleFolderDragOver(e) {
-  const targetHeader = e.currentTarget;
-  if (!canDropFolderOn(targetHeader)) return;
-  e.preventDefault();
-  e.dataTransfer.dropEffect = "move";
-  targetHeader.parentElement.classList.add("drag-over");
-}
-
-function handleFolderDragLeave(e) {
-  e.currentTarget.parentElement.classList.remove("drag-over");
-}
-
-function handleFolderDrop(e) {
-  const targetHeader = e.currentTarget;
-  const targetFolder = targetHeader.parentElement;
-  targetFolder.classList.remove("drag-over");
-  if (!canDropFolderOn(targetHeader)) return;
-  e.preventDefault();
-
-  const container = targetFolder.parentElement;
-  const items = Array.from(container.children).filter((el) => el.classList.contains("folder"));
-  const draggedIndex = items.indexOf(draggedFolderEl);
-  const targetIndex = items.indexOf(targetFolder);
-
-  if (draggedIndex < targetIndex) {
-    container.insertBefore(draggedFolderEl, targetFolder.nextSibling);
-  } else {
-    container.insertBefore(draggedFolderEl, targetFolder);
-  }
-
-  const parentId = draggedFolderEl.dataset.parentId;
-  const orderedIds = Array.from(container.children)
-    .filter((el) => el.classList.contains("folder") && el.dataset.parentId === parentId)
-    .map((el) => el.dataset.folderId);
-
-  orderedIds.forEach((id, index) => {
-    chrome.bookmarks.move(id, { index });
-  });
-}
-
-function handleFolderDragEnd(e) {
-  e.currentTarget.parentElement.classList.remove("dragging");
-  draggedFolderEl = null;
-}
-
 function renderFolder(node) {
   const meta = getMeta(node.id);
   const el = document.createElement("div");
@@ -245,11 +182,10 @@ function renderFolder(node) {
 
   if (!isArchived(meta)) {
     header.draggable = true;
-    header.addEventListener("dragstart", handleFolderDragStart);
-    header.addEventListener("dragover", handleFolderDragOver);
-    header.addEventListener("dragleave", handleFolderDragLeave);
-    header.addEventListener("drop", handleFolderDrop);
-    header.addEventListener("dragend", handleFolderDragEnd);
+    makeDragReorderable(header, el, {
+      isUnit: (candidate) => candidate.classList.contains("folder"),
+      getId: (candidate) => candidate.dataset.folderId,
+    });
   }
 
   const chevron = document.createElement("span");
@@ -300,64 +236,70 @@ function faviconUrl(pageUrl) {
   return url.toString();
 }
 
-function handleBookmarkDragStart(e) {
-  draggedBookmarkEl = e.currentTarget;
-  e.dataTransfer.effectAllowed = "move";
-  e.dataTransfer.setData("text/plain", draggedBookmarkEl.dataset.bookmarkId);
-  draggedBookmarkEl.classList.add("dragging");
-}
-
-function canDropOn(target) {
+function canDropOnto(target) {
   return (
-    draggedBookmarkEl &&
-    target !== draggedBookmarkEl &&
-    target.parentElement === draggedBookmarkEl.parentElement &&
-    target.dataset.parentId === draggedBookmarkEl.dataset.parentId
+    draggedUnit &&
+    target !== draggedUnit &&
+    target.parentElement === draggedUnit.parentElement &&
+    target.dataset.parentId === draggedUnit.dataset.parentId
   );
 }
 
-function handleBookmarkDragOver(e) {
-  const target = e.currentTarget;
-  if (!canDropOn(target)) return;
-  e.preventDefault();
-  e.dataTransfer.dropEffect = "move";
-  target.classList.add("drag-over");
-}
-
-function handleBookmarkDragLeave(e) {
-  e.currentTarget.classList.remove("drag-over");
-}
-
-function handleBookmarkDrop(e) {
-  const target = e.currentTarget;
-  target.classList.remove("drag-over");
-  if (!canDropOn(target)) return;
-  e.preventDefault();
-
-  const container = target.parentElement;
-  const items = Array.from(container.children);
-  const draggedIndex = items.indexOf(draggedBookmarkEl);
-  const targetIndex = items.indexOf(target);
+function reorderUnits(dropTarget, isUnit, getId) {
+  const container = dropTarget.parentElement;
+  const items = Array.from(container.children).filter(isUnit);
+  const draggedIndex = items.indexOf(draggedUnit);
+  const targetIndex = items.indexOf(dropTarget);
 
   if (draggedIndex < targetIndex) {
-    container.insertBefore(draggedBookmarkEl, target.nextSibling);
+    container.insertBefore(draggedUnit, dropTarget.nextSibling);
   } else {
-    container.insertBefore(draggedBookmarkEl, target);
+    container.insertBefore(draggedUnit, dropTarget);
   }
 
-  const parentId = draggedBookmarkEl.dataset.parentId;
+  const parentId = draggedUnit.dataset.parentId;
   const orderedIds = Array.from(container.children)
-    .filter((el) => el.dataset.parentId === parentId)
-    .map((el) => el.dataset.bookmarkId);
+    .filter((candidate) => isUnit(candidate) && candidate.dataset.parentId === parentId)
+    .map(getId);
 
   orderedIds.forEach((id, index) => {
     chrome.bookmarks.move(id, { index });
   });
 }
 
-function handleBookmarkDragEnd(e) {
-  e.currentTarget.classList.remove("dragging");
-  draggedBookmarkEl = null;
+// handleEl is what the user grabs and what receives the drag events; unitEl is the
+// element that actually gets reordered in the DOM. They're the same element for
+// bookmarks, but for folders handleEl is the header while unitEl is the whole
+// .folder (so dragover/drop targeting stays precise even when the folder is expanded).
+function makeDragReorderable(handleEl, unitEl, { isUnit, getId }) {
+  handleEl.addEventListener("dragstart", (e) => {
+    draggedUnit = unitEl;
+    e.dataTransfer.effectAllowed = "move";
+    unitEl.classList.add("dragging");
+  });
+
+  handleEl.addEventListener("dragover", (e) => {
+    if (!canDropOnto(unitEl)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    unitEl.classList.add("drag-over");
+  });
+
+  handleEl.addEventListener("dragleave", () => {
+    unitEl.classList.remove("drag-over");
+  });
+
+  handleEl.addEventListener("drop", (e) => {
+    if (!canDropOnto(unitEl)) return;
+    e.preventDefault();
+    unitEl.classList.remove("drag-over");
+    reorderUnits(unitEl, isUnit, getId);
+  });
+
+  handleEl.addEventListener("dragend", () => {
+    unitEl.classList.remove("dragging");
+    draggedUnit = null;
+  });
 }
 
 function renderBookmark(node, isDefault) {
@@ -447,11 +389,10 @@ function renderBookmark(node, isDefault) {
     });
   }
 
-  el.addEventListener("dragstart", handleBookmarkDragStart);
-  el.addEventListener("dragover", handleBookmarkDragOver);
-  el.addEventListener("dragleave", handleBookmarkDragLeave);
-  el.addEventListener("drop", handleBookmarkDrop);
-  el.addEventListener("dragend", handleBookmarkDragEnd);
+  makeDragReorderable(el, el, {
+    isUnit: (candidate) => candidate.classList.contains("bookmark-item"),
+    getId: (candidate) => candidate.dataset.bookmarkId,
+  });
 
   showDisplay();
   return el;

@@ -14,7 +14,7 @@
 - [ ] The Store requires a **public URL** for your privacy policy, not just a file in the repo. Host `PRIVACY.md` somewhere public — a GitHub Pages page, a gist, or a simple static page — and note the URL for the listing form.
 
 ### 3. Package the extension
-- [ ] Zip only the runtime files: `manifest.json`, `newtab.html/css/js`, `options.html/css/js`, `icons/*.png`. Leave out dev/doc files (`README.md`, `PRIVACY.md`, `PUBLISHING.md`, `CONTEXT.md`, `docs/`, `icons/icon.svg`) — they aren't needed to run and just bloat the package.
+- [ ] Zip only the runtime files: `manifest.json`, `src/newtab/`, `src/options/`, `icons/*.png`. Leave out dev/doc files (`README.md`, `PRIVACY.md`, `PUBLISHING.md`, `CONTEXT.md`, `CLAUDE.md`, `docs/`, `icons/icon.svg`) — they aren't needed to run and just bloat the package.
 - [ ] Bump `"version"` in `manifest.json` before each new submission — the Store rejects re-uploading the same version number.
 
 ### 4. Store listing assets
