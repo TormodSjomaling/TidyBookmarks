@@ -1,15 +1,39 @@
+const DEFAULT_SETTINGS = { faviconOnlyDefault: true, theme: "system", density: "comfortable" };
+
 let folderMeta = {};
-let settings = { faviconOnlyDefault: true };
+let settings = Object.assign({}, DEFAULT_SETTINGS);
 let draggedUnit = null;
+let searchQuery = "";
+let searchDebounceTimer = null;
 
 const ARCHIVE_ICON_SVG =
   '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="12" rx="1"></rect><path d="M3 8l1.5-4h15L21 8"></path><line x1="9.5" y1="13" x2="14.5" y2="13"></line></svg>';
 
 const app = document.getElementById("app");
 const defaultBookmarksEl = document.getElementById("default-bookmarks");
+const searchInput = document.getElementById("search-input");
 
 document.getElementById("options-btn").addEventListener("click", () => {
   chrome.runtime.openOptionsPage();
+});
+
+searchInput.addEventListener("input", () => {
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(() => {
+    searchQuery = searchInput.value.trim().toLowerCase();
+    render();
+  }, 150);
+});
+
+searchInput.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    e.preventDefault();
+    clearTimeout(searchDebounceTimer);
+    searchInput.value = "";
+    searchQuery = "";
+    render();
+    searchInput.blur();
+  }
 });
 
 function getMeta(id) {
@@ -24,8 +48,11 @@ function isFolder(node) {
   return node.url === undefined;
 }
 
+// Search-aware: while a query is active, folders never count as "archived" for
+// rendering purposes (they're forced open and shown plainly) even though the
+// underlying meta is untouched — see CONTEXT.md / CLAUDE.md for why.
 function isArchived(meta) {
-  return meta.archived && meta.collapsed;
+  return Boolean(meta.archived && meta.collapsed && !searchQuery);
 }
 
 function getOrCreateMeta(id) {
@@ -33,6 +60,23 @@ function getOrCreateMeta(id) {
     folderMeta[id] = { collapsed: false, archived: false, lastArchivedAt: null };
   }
   return folderMeta[id];
+}
+
+function matchesText(text, query) {
+  return Boolean(text) && text.toLowerCase().includes(query);
+}
+
+function nodeMatchesQuery(node, query) {
+  if (isFolder(node)) {
+    if (matchesText(node.title, query)) return true;
+    return (node.children || []).some((child) => nodeMatchesQuery(child, query));
+  }
+  return matchesText(node.title, query) || matchesText(node.url, query);
+}
+
+function visibleChildren(children) {
+  if (!searchQuery) return children;
+  return children.filter((child) => nodeMatchesQuery(child, searchQuery));
 }
 
 function toggleCollapsed(id) {
@@ -149,8 +193,9 @@ function renderArchivedSummary(folders) {
 }
 
 function renderChildren(children, container) {
-  const folders = orderFolders(children.filter(isFolder));
-  const bookmarks = children.filter((c) => !isFolder(c));
+  const visible = visibleChildren(children);
+  const folders = orderFolders(visible.filter(isFolder));
+  const bookmarks = visible.filter((c) => !isFolder(c));
 
   if (bookmarks.length > 0) {
     const grid = document.createElement("div");
@@ -166,25 +211,29 @@ function renderChildren(children, container) {
 
 function renderFolder(node) {
   const meta = getMeta(node.id);
+  const collapsed = meta.collapsed && !searchQuery;
+  const archived = isArchived(meta);
+
   const el = document.createElement("div");
   el.className = "folder";
   el.dataset.folderId = node.id;
   el.dataset.parentId = node.parentId;
-  if (meta.collapsed) el.classList.add("collapsed");
-  if (isArchived(meta)) el.classList.add("archived");
+  if (collapsed) el.classList.add("collapsed");
+  if (archived) el.classList.add("archived");
 
   const header = document.createElement("div");
   header.className = "folder-header";
-  header.addEventListener("click", (e) => {
-    if (e.target.closest(".folder-actions")) return;
-    toggleCollapsed(node.id);
-  });
 
-  if (!isArchived(meta)) {
-    header.draggable = true;
-    makeDragReorderable(header, el, {
+  if (!searchQuery) {
+    header.addEventListener("click", (e) => {
+      if (e.target.closest(".folder-actions")) return;
+      toggleCollapsed(node.id);
+    });
+
+    wireFolderDropTarget(header, el, {
       isUnit: (candidate) => candidate.classList.contains("folder"),
       getId: (candidate) => candidate.dataset.folderId,
+      draggableSource: !archived,
     });
   }
 
@@ -198,7 +247,42 @@ function renderFolder(node) {
   name.textContent = node.title || "(untitled)";
   header.appendChild(name);
 
-  if (isArchived(meta)) {
+  function startFolderRename() {
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "folder-edit-input";
+    input.value = node.title || "";
+    input.addEventListener("click", (e) => e.stopPropagation());
+
+    function commit() {
+      const trimmed = input.value.trim();
+      if (trimmed && trimmed !== node.title) {
+        node.title = trimmed;
+        name.textContent = trimmed;
+        chrome.bookmarks.update(node.id, { title: trimmed });
+      }
+      input.replaceWith(name);
+    }
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        commit();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        input.replaceWith(name);
+      }
+    });
+    input.addEventListener("blur", commit);
+
+    name.replaceWith(input);
+    requestAnimationFrame(() => {
+      input.focus();
+      input.select();
+    });
+  }
+
+  if (archived) {
     const badge = document.createElement("span");
     badge.className = "folder-badge";
     badge.textContent = "Archived";
@@ -207,6 +291,13 @@ function renderFolder(node) {
 
   const actions = document.createElement("span");
   actions.className = "folder-actions";
+
+  const renameBtn = document.createElement("button");
+  renameBtn.type = "button";
+  renameBtn.title = "Rename";
+  renameBtn.textContent = "✎";
+  renameBtn.addEventListener("click", () => startFolderRename());
+  actions.appendChild(renameBtn);
 
   const archiveBtn = document.createElement("button");
   archiveBtn.type = "button";
@@ -245,6 +336,20 @@ function canDropOnto(target) {
   );
 }
 
+function canDropInto(folderEl) {
+  // Cycle prevention only matters when the dragged item is itself a folder: a
+  // folder can't be dropped into itself or into one of its own descendants,
+  // since that would disconnect part of the tree. draggedUnit.contains(folderEl)
+  // catches both (equality is contains-of-self). Moving a folder to a shallower
+  // ancestor, or a bookmark anywhere at all (including its own current parent),
+  // is always fine and deliberately left unrestricted.
+  return Boolean(draggedUnit && !draggedUnit.contains(folderEl));
+}
+
+function getUnitId(unitEl) {
+  return unitEl.classList.contains("folder") ? unitEl.dataset.folderId : unitEl.dataset.bookmarkId;
+}
+
 function reorderUnits(dropTarget, isUnit, getId) {
   const container = dropTarget.parentElement;
   const items = Array.from(container.children).filter(isUnit);
@@ -271,6 +376,8 @@ function reorderUnits(dropTarget, isUnit, getId) {
 // element that actually gets reordered in the DOM. They're the same element for
 // bookmarks, but for folders handleEl is the header while unitEl is the whole
 // .folder (so dragover/drop targeting stays precise even when the folder is expanded).
+// Bookmarks are always simple reorder-only drag sources — they're never a valid
+// "move into" drop target, so they don't need the band logic below.
 function makeDragReorderable(handleEl, unitEl, { isUnit, getId }) {
   handleEl.addEventListener("dragstart", (e) => {
     draggedUnit = unitEl;
@@ -302,6 +409,70 @@ function makeDragReorderable(handleEl, unitEl, { isUnit, getId }) {
   });
 }
 
+// Folder headers are both drag sources (reorder among siblings, when draggableSource
+// is true) and drop targets: dragover position within the header decides what a drop
+// means. Top/bottom ~25% bands mean "reorder" (only takes effect if canDropOnto's
+// sibling check also passes); the middle band means "move into this folder", which
+// works regardless of whether target and dragged item are currently siblings, and is
+// also offered on archived folders (draggableSource false) so a bookmark can be
+// dropped into an archived-but-individually-rendered folder without unarchiving it.
+function dragBand(e, el) {
+  const rect = el.getBoundingClientRect();
+  const ratio = (e.clientY - rect.top) / rect.height;
+  if (ratio < 0.25) return "before";
+  if (ratio > 0.75) return "after";
+  return "into";
+}
+
+function wireFolderDropTarget(header, unitEl, { isUnit, getId, draggableSource }) {
+  if (draggableSource) {
+    header.draggable = true;
+    header.addEventListener("dragstart", (e) => {
+      draggedUnit = unitEl;
+      e.dataTransfer.effectAllowed = "move";
+      unitEl.classList.add("dragging");
+    });
+    header.addEventListener("dragend", () => {
+      unitEl.classList.remove("dragging");
+      draggedUnit = null;
+    });
+  }
+
+  header.addEventListener("dragover", (e) => {
+    const band = dragBand(e, header);
+    const reorderOk = band !== "into" && canDropOnto(unitEl);
+    const intoOk = band === "into" && canDropInto(unitEl);
+    if (!reorderOk && !intoOk) {
+      unitEl.classList.remove("drag-over", "drag-over-into");
+      return;
+    }
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    unitEl.classList.toggle("drag-over", reorderOk);
+    unitEl.classList.toggle("drag-over-into", intoOk);
+  });
+
+  header.addEventListener("dragleave", () => {
+    unitEl.classList.remove("drag-over", "drag-over-into");
+  });
+
+  header.addEventListener("drop", (e) => {
+    const band = dragBand(e, header);
+    const reorderOk = band !== "into" && canDropOnto(unitEl);
+    const intoOk = band === "into" && canDropInto(unitEl);
+    unitEl.classList.remove("drag-over", "drag-over-into");
+    if (reorderOk) {
+      e.preventDefault();
+      reorderUnits(unitEl, isUnit, getId);
+    } else if (intoOk) {
+      e.preventDefault();
+      const draggedId = getUnitId(draggedUnit);
+      const targetFolderId = unitEl.dataset.folderId;
+      chrome.bookmarks.move(draggedId, { parentId: targetFolderId }, () => render());
+    }
+  });
+}
+
 function renderBookmark(node, isDefault) {
   const el = document.createElement("div");
   el.className = "bookmark-item";
@@ -312,7 +483,7 @@ function renderBookmark(node, isDefault) {
     const compact = Boolean(isDefault && settings.faviconOnlyDefault);
     el.classList.toggle("bookmark-item--compact", compact);
     el.innerHTML = "";
-    el.draggable = true;
+    el.draggable = !searchQuery;
 
     const icon = document.createElement("img");
     icon.className = "favicon";
@@ -389,10 +560,12 @@ function renderBookmark(node, isDefault) {
     });
   }
 
-  makeDragReorderable(el, el, {
-    isUnit: (candidate) => candidate.classList.contains("bookmark-item"),
-    getId: (candidate) => candidate.dataset.bookmarkId,
-  });
+  if (!searchQuery) {
+    makeDragReorderable(el, el, {
+      isUnit: (candidate) => candidate.classList.contains("bookmark-item"),
+      getId: (candidate) => candidate.dataset.bookmarkId,
+    });
+  }
 
   showDisplay();
   return el;
@@ -409,10 +582,13 @@ function render() {
 
     for (const root of roots) {
       if (!root.children || root.children.length === 0) continue;
+
+      const visible = visibleChildren(root.children);
+      if (visible.length === 0) continue;
       rendered = true;
 
-      const folders = orderFolders(root.children.filter(isFolder));
-      const bookmarks = root.children.filter((c) => !isFolder(c));
+      const folders = orderFolders(visible.filter(isFolder));
+      const bookmarks = visible.filter((c) => !isFolder(c));
 
       for (const bookmark of bookmarks) {
         hasDefaultBookmarks = true;
@@ -431,7 +607,7 @@ function render() {
     if (!rendered) {
       const empty = document.createElement("div");
       empty.className = "empty-state";
-      empty.textContent = "No bookmarks yet.";
+      empty.textContent = searchQuery ? "No matching bookmarks." : "No bookmarks yet.";
       app.appendChild(empty);
     }
   });
@@ -439,13 +615,15 @@ function render() {
 
 chrome.storage.local.get(["folderMeta", "settings"], (result) => {
   folderMeta = result.folderMeta || {};
-  settings = Object.assign({ faviconOnlyDefault: true }, result.settings || {});
+  settings = Object.assign({}, DEFAULT_SETTINGS, result.settings || {});
+  applySettings(settings);
   render();
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === "local" && changes.settings) {
-    settings = Object.assign({ faviconOnlyDefault: true }, changes.settings.newValue || {});
+    settings = Object.assign({}, DEFAULT_SETTINGS, changes.settings.newValue || {});
+    applySettings(settings);
     render();
   }
 });

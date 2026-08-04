@@ -1,12 +1,8 @@
-:root {
-  color-scheme: dark;
-}
-
 body {
   margin: 0;
   padding: 2rem;
-  background: #191919;
-  color: #e6e6e6;
+  background: var(--bg);
+  color: var(--text);
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   font-size: 16px;
 }
@@ -21,7 +17,7 @@ body {
 #back-btn {
   background: none;
   border: none;
-  color: #999;
+  color: var(--text-dim);
   cursor: pointer;
   font-size: 1.2rem;
   line-height: 1;
@@ -30,8 +26,8 @@ body {
 }
 
 #back-btn:hover {
-  background: #232323;
-  color: #e6e6e6;
+  background: var(--bg-raised);
+  color: var(--text);
 }
 
 h1 {
@@ -45,9 +41,21 @@ h1 {
   align-items: center;
   gap: 0.6rem;
   cursor: pointer;
+  margin-bottom: 0.9rem;
 }
 
-.option-row input {
+.option-row input[type="checkbox"] {
   width: 16px;
   height: 16px;
+}
+
+.option-row select {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 0.25rem 0.5rem;
+  font-family: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
 }

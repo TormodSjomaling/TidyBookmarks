@@ -1,0 +1,55 @@
+:root {
+  color-scheme: light dark;
+
+  --bg: #191919;
+  --bg-raised: #232323;
+  --border: #333;
+  --text: #e6e6e6;
+  --text-dim: #999;
+  --accent: #5b9dd9;
+  --archived-opacity: 0.4;
+
+  --card-padding: 0.65rem 0.9rem;
+  --row-gap: 0.75rem;
+  --folder-header-padding: 0.25rem 0.7rem;
+  --folder-indent: 1rem;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f4f4f4;
+    --bg-raised: #e6e6e6;
+    --border: #cfcfcf;
+    --text: #1a1a1a;
+    --text-dim: #666;
+    --accent: #2f6fb0;
+    --archived-opacity: 0.55;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #191919;
+  --bg-raised: #232323;
+  --border: #333;
+  --text: #e6e6e6;
+  --text-dim: #999;
+  --accent: #5b9dd9;
+  --archived-opacity: 0.4;
+}
+
+:root[data-theme="light"] {
+  --bg: #f4f4f4;
+  --bg-raised: #e6e6e6;
+  --border: #cfcfcf;
+  --text: #1a1a1a;
+  --text-dim: #666;
+  --accent: #2f6fb0;
+  --archived-opacity: 0.55;
+}
+
+:root[data-density="compact"] {
+  --card-padding: 0.4rem 0.6rem;
+  --row-gap: 0.4rem;
+  --folder-header-padding: 0.1rem 0.6rem;
+  --folder-indent: 0.6rem;
+}
