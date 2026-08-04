@@ -1,6 +1,6 @@
 # Tidy Bookmarks
 
-A Chrome new-tab-page extension that renders the user's native Chrome bookmarks as a navigable, correctly-nested tree, letting a consultant who rotates between client projects every ~6 months archive old clients' bookmarks out of view without deleting them.
+A Chrome new-tab-page extension that renders the user's native Chrome bookmarks as a navigable, correctly-nested tree, archive old bookmarks out of view without deleting them.
 
 ## Language
 
