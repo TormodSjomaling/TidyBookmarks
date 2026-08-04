@@ -9,4 +9,4 @@ Tidy Bookmarks does not collect, transmit, or share any data. Specifically:
 - **Storage permission.** Tidy Bookmarks stores its own settings and per-folder state (collapsed/archived flags, the favicon-only display preference) locally via `chrome.storage.local`. This data is stored only on your device and is not synced to any external service by the extension.
 - **Favicon permission.** Used only to display each bookmark's site icon, fetched through Chrome's built-in favicon cache — no external image requests are made by the extension.
 
-If you have questions about this policy, contact: tormod.sjomaling@bekk.no.
+If you have questions about this policy, contact: tormod_ls@hotmail.com.
