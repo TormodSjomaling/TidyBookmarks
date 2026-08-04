@@ -1,0 +1,3 @@
+# Use the native chrome.bookmarks API as the source of truth
+
+We considered giving the extension its own separate bookmark store instead of reading Chrome's built-in bookmarks. We chose to read and write through the `chrome.bookmarks` API directly, treating it as the single source of truth for bookmark data. This avoids any migration of the user's existing bookmark tree, gets Chrome's built-in cross-device sync for free, and needs no account system or backend — which also keeps the door open for publishing the extension later. The extension's own storage (`chrome.storage`) will hold only supplementary metadata (e.g. per-folder archive/collapse state), never the bookmarks themselves.

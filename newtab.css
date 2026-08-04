@@ -1,0 +1,359 @@
+:root {
+  color-scheme: dark;
+  --bg: #191919;
+  --bg-raised: #232323;
+  --border: #333;
+  --text: #e6e6e6;
+  --text-dim: #999;
+  --accent: #5b9dd9;
+  --archived-opacity: 0.4;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 18px;
+  min-height: 100vh;
+}
+
+#page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.4rem 0.6rem 0;
+}
+
+#default-bookmarks {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+
+#header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: none;
+}
+
+#options-btn {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 0.3rem 0.5rem;
+  border-radius: 6px;
+}
+
+#options-btn:hover {
+  background: var(--bg-raised);
+  color: var(--text);
+}
+
+main#app {
+  padding: 0.1rem 0.6rem 2rem;
+  margin: 0;
+}
+
+.folder {
+  border-radius: 6px;
+}
+
+.folder-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.25rem 0.7rem;
+  border-radius: 8px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 1.05rem;
+  line-height: 1.5;
+}
+
+.folder-header:hover {
+  background: var(--bg-raised);
+}
+
+.folder-header:hover .folder-actions {
+  visibility: visible;
+}
+
+.folder.dragging > .folder-header {
+  opacity: 0.4;
+}
+
+.folder.drag-over > .folder-header {
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
+}
+
+.chevron {
+  display: inline-block;
+  width: 0.9rem;
+  font-size: 1.1rem;
+  color: var(--text-dim);
+  transition: transform 0.1s ease;
+  flex: none;
+}
+
+.folder.collapsed > .folder-header .chevron {
+  transform: rotate(-90deg);
+}
+
+.folder-name {
+  font-weight: 500;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-badge {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 0.1rem 0.45rem;
+  flex: none;
+}
+
+.folder.archived {
+  opacity: var(--archived-opacity);
+}
+
+.folder.archived > .folder-header {
+  padding: 0.05rem 0.7rem;
+  font-size: 0.85rem;
+  min-height: 0;
+}
+
+.folder.archived > .folder-header .chevron {
+  font-size: 0.9rem;
+}
+
+.folder.archived > .folder-header .folder-badge {
+  font-size: 0.7rem;
+  padding: 0.05rem 0.35rem;
+}
+
+.folder-actions {
+  visibility: hidden;
+  display: flex;
+  gap: 0.25rem;
+  flex: none;
+}
+
+.folder-actions button {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 1.15rem;
+  line-height: 1;
+  padding: 0.3rem 0.45rem;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.folder-actions button svg {
+  display: block;
+}
+
+.folder-actions button:hover {
+  background: #2f2f2f;
+  color: var(--text);
+}
+
+.folder-actions button.is-archived {
+  color: var(--accent);
+}
+
+.folder-children {
+  margin-left: 1rem;
+  padding-left: 0.3rem;
+}
+
+.folder.collapsed > .folder-children {
+  display: none;
+}
+
+.archived-summary-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.15rem 0.7rem;
+  border-radius: 8px;
+  cursor: pointer;
+  user-select: none;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+.archived-summary-header:hover {
+  background: var(--bg-raised);
+}
+
+.archived-summary-header .chevron {
+  transform: rotate(-90deg);
+  font-size: 0.9rem;
+}
+
+.archived-summary.expanded .archived-summary-header .chevron {
+  transform: rotate(0deg);
+}
+
+.archived-chip-list {
+  display: none;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.4rem 0.7rem 0.6rem 1.7rem;
+}
+
+.archived-summary.expanded .archived-chip-list {
+  display: flex;
+}
+
+.archived-chip {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 14px;
+  padding: 0.2rem 0.7rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.archived-chip:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.bookmark-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 0.75rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.bookmark-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0.65rem 0.9rem;
+  border-radius: 10px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  width: 220px;
+  flex: 0 0 220px;
+  min-width: 0;
+}
+
+.bookmark-item:hover {
+  border-color: var(--accent);
+  background: #282828;
+}
+
+.bookmark-item.dragging {
+  opacity: 0.4;
+}
+
+.bookmark-item.drag-over {
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
+}
+
+.bookmark-link {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.bookmark-item .favicon {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: 4px;
+}
+
+.bookmark-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.bookmark-edit-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: #1c1c1c;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 0.3rem 0.5rem;
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+.bookmark-edit-btn {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  background: rgba(0, 0, 0, 0.55);
+  border: none;
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  line-height: 1;
+  padding: 0.2rem 0.35rem;
+  border-radius: 5px;
+  cursor: pointer;
+  visibility: hidden;
+}
+
+.bookmark-item:hover .bookmark-edit-btn {
+  visibility: visible;
+}
+
+.bookmark-edit-btn:hover {
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.default-grid {
+  gap: 0.5rem;
+}
+
+.bookmark-item.bookmark-item--compact {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 0.5rem;
+  justify-content: center;
+}
+
+.bookmark-item.bookmark-item--compact .favicon {
+  width: 20px;
+  height: 20px;
+}
+
+.empty-state {
+  color: var(--text-dim);
+  padding: 1rem 0.5rem;
+}
