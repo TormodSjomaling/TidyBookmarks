@@ -26,7 +26,7 @@ Tests run against a fake `chrome` API (`src/dev/fakeChrome.ts`, shared with the 
   - `tree.ts` — `isArchived`, search (`nodeMatchesQuery`, `visibleChildren`), sibling ordering/grouping (`orderFolders`, `groupFolders`), parent lookup (`buildParentMap`, `isSelfOrDescendant`).
   - `folderMeta.ts` — state transitions: `toggleCollapsed`, `toggleArchived`, `unarchive`. Each returns a new map.
   - `dnd.ts` — drop guards (`canDropOnto`, `canDropInto`), `dragBand`, `reorderedIds`.
-- `src/newtab/` — the new-tab page. `App.tsx` (header, search, root sections), `Folder.tsx` (`FolderList`, `Folder`, `ArchivedSummary`, `BookmarkGrid`), `Bookmark.tsx`, `InlineEdit.tsx`, `hooks.ts` (Chrome data hooks), `drag.ts` (drag-and-drop hooks), `dashboard.ts` (shared context).
+- `src/newtab/` — the new-tab page. `App.tsx` (header, search, root sections), `Folder.tsx` (`FolderList`, `Folder`, `ArchivedSummary`, `BookmarkGrid`), `Bookmark.tsx`, `BookmarkEditor.tsx` (edit/delete popover), `InlineEdit.tsx` (folder rename), `hooks.ts` (Chrome data hooks), `drag.ts` (drag-and-drop hooks), `dashboard.ts` (shared context).
 - `src/options/` — the Options page (`Options.tsx`), a full tab (`options_ui.open_in_tab: true`) opened from the ⚙ button via `chrome.runtime.openOptionsPage()`.
 - `src/shared/` — used by both pages: `theme.css` and `settings.ts`.
 - `vite.config.ts` — two HTML entries; HTML keeps its source path in `dist/` (`dist/src/newtab/newtab.html`) so `manifest.json`'s paths stay valid. A small plugin emits `manifest.json` (version stamped) and `icons/*.png`.
@@ -69,7 +69,14 @@ The dragged item lives in `DashboardContext.dragged` (a ref, not state — drago
 - Archived folders aren't draggable (they're algorithmically sorted, so a manual position would be overwritten) but do accept move-into drops. Folders folded into the `.archived-summary` row aren't drop targets at all.
 
 ### Rendering and flicker
-Components are keyed by bookmark id, so a tree re-read or state change only patches what changed — favicon `<img>`s keep their `src` and aren't refetched. Collapsed folders still render their children (hidden by CSS), which keeps descendants' component state and favicons around. Renames show the new title immediately (`pendingTitle`) until the re-read tree catches up.
+Components are keyed by bookmark id, so a tree re-read or state change only patches what changed — favicon `<img>`s keep their `src` and aren't refetched. Collapsed folders still render their children (hidden by CSS), which keeps descendants' component state and favicons around. Edits show the new title/URL immediately (`pending`/`pendingTitle`) until the re-read tree catches up.
+
+### Editing bookmarks (`BookmarkEditor.tsx`)
+The ✎ button on a bookmark opens a native popover (`popover="auto"`) for name, URL and delete, so Escape and clicking outside close it for free. It is portalled into `<body>`, so the tile's `draggable` doesn't hijack text selection in its inputs, and CSS anchor positioning places it under the tile carrying `.bookmark-item--editing` (`anchor-name`), flipping at viewport edges. While open, ✎ becomes the popover's native invoker (`popoverTarget`), so clicking it again closes it instead of light-dismissing and reopening. The opening click calls `preventDefault()`, because React re-renders mid-click and the newly added `popoverTarget` would otherwise immediately hide the popover. `normalizeUrl` adds `https://` to bare domains (as the address bar does) and rejects unparseable input before calling `chrome.bookmarks.update`. Delete is a two-step confirm, then `chrome.bookmarks.remove` (removes it from Chrome, not just the page).
+
+Folders still rename inline with `InlineEdit`.
+
+jsdom has no Popover API; `src/test/setup.ts` fills in `showPopover`/`hidePopover` for tests.
 
 `InlineEdit` guards against Chrome firing `blur` on a focused input as it's removed: without the guard, Escape would still commit the edit.
 

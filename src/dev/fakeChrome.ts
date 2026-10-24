@@ -83,11 +83,23 @@ export function installFakeChrome(roots: BookmarkNode[], initialStorage: Record<
     bookmarks: {
       ...bookmarkEvents,
       getTree: async () => [structuredClone(tree)],
-      update: async (id: string, changes: { title?: string }) => {
+      update: async (id: string, changes: { title?: string; url?: string }) => {
         const node = find(id)!;
+        if (changes.url !== undefined) {
+          // Like Chrome, reject URLs that don't parse.
+          if (!URL.canParse(changes.url)) throw new Error("Invalid URL.");
+          node.url = changes.url;
+        }
         if (changes.title !== undefined) node.title = changes.title;
         bookmarkEvents.onChanged.fire(id, changes);
         return structuredClone(node);
+      },
+      remove: async (id: string) => {
+        const node = find(id)!;
+        if (node.children?.length) throw new Error("Can't remove non-empty folder (use recursive to force).");
+        const parent = find(node.parentId!)!;
+        parent.children = parent.children!.filter((c) => c.id !== id);
+        bookmarkEvents.onRemoved.fire(id, { parentId: parent.id });
       },
       move: async (id: string, destination: { parentId?: string; index?: number }) => {
         const node = find(id)!;

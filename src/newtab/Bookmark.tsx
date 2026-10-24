@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import type { DragUnit } from "../lib/dnd";
 import type { BookmarkNode } from "../lib/types";
+import { BookmarkEditor } from "./BookmarkEditor";
 import { faviconUrl, useDashboard } from "./dashboard";
 import { useDragSource, useReorderTarget } from "./drag";
-import { InlineEdit } from "./InlineEdit";
 
 interface Props {
   node: BookmarkNode;
@@ -18,36 +18,28 @@ interface Props {
 export function Bookmark({ node, isDefault, containerKey, siblings }: Props) {
   const { settings, query } = useDashboard();
   const [editing, setEditing] = useState(false);
-  // Shown between committing a rename and the tree re-reading the new title.
-  const [pendingTitle, setPendingTitle] = useState<string | null>(null);
-  useEffect(() => setPendingTitle(null), [node.title]);
+  const editorId = useId();
+  // Shown between saving an edit and the tree re-reading the bookmark.
+  const [pending, setPending] = useState<{ title: string; url: string } | null>(null);
+  useEffect(() => setPending(null), [node.title, node.url]);
 
   const unit: DragUnit = { id: node.id, parentId: node.parentId ?? "", containerKey };
   const { dragging, sourceProps } = useDragSource(unit);
   const { over, targetProps } = useReorderTarget(unit, siblings);
   const dndEnabled = !query;
 
-  const url = node.url ?? "";
-  const title = pendingTitle ?? node.title;
-  const compact = isDefault && settings.faviconOnlyDefault && !editing;
+  const url = pending?.url ?? node.url ?? "";
+  const title = pending?.title ?? node.title;
+  const compact = isDefault && settings.faviconOnlyDefault;
   const className = [
     "bookmark-item",
     compact && "bookmark-item--compact",
+    editing && "bookmark-item--editing",
     dragging && "dragging",
     over && "drag-over",
   ]
     .filter(Boolean)
     .join(" ");
-
-  const commitRename = (value: string) => {
-    if (value && value !== node.title) {
-      setPendingTitle(value);
-      chrome.bookmarks.update(node.id, { title: value });
-    }
-    setEditing(false);
-  };
-
-  const favicon = <img className="favicon" src={faviconUrl(url)} alt="" />;
 
   return (
     <div
@@ -57,36 +49,34 @@ export function Bookmark({ node, isDefault, containerKey, siblings }: Props) {
       draggable={dndEnabled && !editing}
       {...(dndEnabled ? { ...sourceProps, ...targetProps } : {})}
     >
-      {editing ? (
-        <>
-          {favicon}
-          <InlineEdit
-            className="bookmark-edit-input"
-            initialValue={title}
-            onCommit={commitRename}
-            onCancel={() => setEditing(false)}
-          />
-        </>
-      ) : (
-        <>
-          <a href={url} className="bookmark-link" title={title || url}>
-            {favicon}
-            {!compact && <span className="bookmark-title">{title || url}</span>}
-          </a>
-          <button
-            type="button"
-            className="bookmark-edit-btn"
-            title="Rename"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setEditing(true);
-            }}
-          >
-            ✎
-          </button>
-        </>
-      )}
+      <a href={url} className="bookmark-link" title={title || url}>
+        <img className="favicon" src={faviconUrl(url)} alt="" />
+        {!compact && <span className="bookmark-title">{title || url}</span>}
+      </a>
+      <button
+        type="button"
+        className="bookmark-edit-btn"
+        title="Edit"
+        aria-haspopup="dialog"
+        aria-expanded={editing}
+        // While open, the button is the popover's native invoker: clicking it
+        // hides the popover (and isn't treated as a click outside that would
+        // close it only for this click to reopen it).
+        popoverTarget={editing ? editorId : undefined}
+        popoverTargetAction="hide"
+        onClick={(e) => {
+          e.stopPropagation();
+          if (editing) return;
+          // React re-renders during this click, adding popoverTarget before
+          // the button's default action runs; cancel it so it doesn't hide the
+          // popover we're opening.
+          e.preventDefault();
+          setEditing(true);
+        }}
+      >
+        ✎
+      </button>
+      {editing && <BookmarkEditor id={editorId} node={node} onSaved={setPending} onClose={() => setEditing(false)} />}
     </div>
   );
 }

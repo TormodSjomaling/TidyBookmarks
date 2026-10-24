@@ -111,15 +111,86 @@ describe("new tab page", () => {
     expect(await screen.findByText("No matching bookmarks.")).toBeTruthy();
   });
 
-  it("renames a bookmark with Enter", async () => {
-    await renderApp();
-    const jira = document.querySelector('[data-bookmark-id="jira"]')!;
-    fireEvent.click(jira.querySelector(".bookmark-edit-btn")!);
-    const input = jira.querySelector("input")!;
-    fireEvent.change(input, { target: { value: "  Jira board " } });
-    fireEvent.keyDown(input, { key: "Enter" });
-    expect(screen.getByText("Jira board")).toBeTruthy();
-    await waitFor(() => expect(fake.find("jira")!.title).toBe("Jira board"));
+  describe("bookmark editor popover", () => {
+    const openEditor = (id: string) => {
+      fireEvent.click(document.querySelector(`[data-bookmark-id="${id}"] .bookmark-edit-btn`)!);
+      return screen.getByRole("dialog", { name: "Edit bookmark" });
+    };
+
+    it("opens prefilled with the bookmark's name and URL", async () => {
+      await renderApp();
+      openEditor("jira");
+      expect((screen.getByLabelText("Name") as HTMLInputElement).value).toBe("Jira");
+      expect((screen.getByLabelText("URL") as HTMLInputElement).value).toBe("https://jira.example");
+    });
+
+    it("saves a new name and URL, adding https:// when it's missing", async () => {
+      await renderApp();
+      openEditor("jira");
+      fireEvent.change(screen.getByLabelText("Name"), { target: { value: "  Jira board " } });
+      fireEvent.change(screen.getByLabelText("URL"), { target: { value: "board.example.com/team" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      expect(fake.find("jira")).toMatchObject({ title: "Jira board", url: "https://board.example.com/team" });
+      expect(screen.getByText("Jira board")).toBeTruthy();
+      expect(document.querySelector('[data-bookmark-id="jira"] a')!.getAttribute("href")).toBe(
+        "https://board.example.com/team"
+      );
+    });
+
+    it("rejects an invalid URL and keeps the popover open", async () => {
+      await renderApp();
+      openEditor("jira");
+      fireEvent.change(screen.getByLabelText("URL"), { target: { value: "not a url" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      expect(screen.getByRole("alert").textContent).toMatch(/valid URL/);
+      expect(screen.getByRole("dialog")).toBeTruthy();
+      expect(fake.find("jira")!.url).toBe("https://jira.example");
+    });
+
+    it("Cancel closes without saving", async () => {
+      await renderApp();
+      openEditor("jira");
+      fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Changed" } });
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(fake.find("jira")!.title).toBe("Jira");
+    });
+
+    it("deletes the bookmark from Chrome after confirming", async () => {
+      await renderApp();
+      openEditor("jira");
+      fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+      expect(screen.getByText("Remove from Chrome bookmarks?")).toBeTruthy();
+      // Nothing is deleted until the second, explicit Delete.
+      expect(fake.find("jira")).toBeDefined();
+
+      fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+      await waitFor(() => expect(document.querySelector('[data-bookmark-id="jira"]')).toBeNull());
+      expect(fake.find("jira")).toBeUndefined();
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("Keep backs out of deleting", async () => {
+      await renderApp();
+      openEditor("jira");
+      fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+      fireEvent.click(screen.getByRole("button", { name: "Keep" }));
+
+      expect(screen.getByRole("button", { name: "Save" })).toBeTruthy();
+      expect(fake.find("jira")).toBeDefined();
+    });
+
+    it("works for favicon-only default bookmarks too", async () => {
+      await renderApp();
+      openEditor("g");
+      fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Search" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(fake.find("g")!.title).toBe("Search"));
+    });
   });
 
   it("Escape cancels a rename even though blur follows", async () => {

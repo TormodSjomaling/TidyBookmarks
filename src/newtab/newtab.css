@@ -328,18 +328,6 @@ main#app {
   min-width: 0;
 }
 
-.bookmark-edit-input {
-  flex: 1 1 auto;
-  min-width: 0;
-  background: var(--bg);
-  border: 1px solid var(--accent);
-  border-radius: 6px;
-  color: var(--text);
-  padding: 0.3rem 0.5rem;
-  font-size: 1rem;
-  font-family: inherit;
-}
-
 .bookmark-edit-btn {
   position: absolute;
   top: 3px;
@@ -355,7 +343,8 @@ main#app {
   visibility: hidden;
 }
 
-.bookmark-item:hover .bookmark-edit-btn {
+.bookmark-item:hover .bookmark-edit-btn,
+.bookmark-item--editing .bookmark-edit-btn {
   visibility: visible;
 }
 
@@ -383,4 +372,118 @@ main#app {
 .empty-state {
   color: var(--text-dim);
   padding: 1rem 0.5rem;
+}
+
+/* Bookmark edit popover (BookmarkEditor.tsx): a native popover in the top
+   layer, anchored to the tile being edited and flipped when it would overflow. */
+.bookmark-item--editing {
+  anchor-name: --bookmark-editor;
+  border-color: var(--accent);
+}
+
+.bookmark-editor {
+  position-anchor: --bookmark-editor;
+  inset: auto;
+  top: anchor(bottom);
+  left: anchor(left);
+  margin: 6px 0;
+  position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
+  width: 320px;
+  padding: 0.9rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-raised);
+  color: var(--text);
+  font-size: 0.9rem;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+}
+
+.bookmark-editor form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.bookmark-editor label {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+
+.bookmark-editor input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 0.35rem 0.5rem;
+  font-size: 0.95rem;
+  font-family: inherit;
+  margin-bottom: 0.4rem;
+}
+
+.bookmark-editor input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.bookmark-editor input[aria-invalid="true"] {
+  border-color: #d9534f;
+}
+
+.bookmark-editor-error {
+  margin: -0.2rem 0 0.4rem;
+  color: #e0645f;
+  font-size: 0.8rem;
+}
+
+.bookmark-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+}
+
+.bookmark-editor-actions .spacer {
+  flex: 1;
+}
+
+.bookmark-editor-confirm {
+  flex: 1;
+}
+
+.bookmark-editor button {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 0.3rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.bookmark-editor button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.bookmark-editor button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.bookmark-editor button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.bookmark-editor button.danger-subtle {
+  border-color: transparent;
+  color: #e0645f;
+  padding-inline: 0.3rem;
+}
+
+.bookmark-editor button.danger {
+  background: #c9423d;
+  border-color: #c9423d;
+  color: #fff;
 }

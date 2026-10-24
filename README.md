@@ -22,7 +22,8 @@ It reads and writes your real Chrome bookmarks (`chrome://bookmarks`) — nothin
 - **Default bookmarks row** — bookmarks that aren't inside any folder (e.g. `google.com`, `linkedin.com`) show in a compact row at the top, favicon-only by default (configurable in Options).
 - **Search** — type in the search box to filter bookmarks and folders by title or URL as you type, including inside collapsed and archived folders.
 - **Drag-and-drop** — drag a bookmark or folder onto another in the same list to reorder, or drop it onto the middle of a different folder to move it inside that folder.
-- **Inline rename** — hover any bookmark or folder and click the pencil icon to rename it in place.
+- **Edit bookmarks** — hover a bookmark and click the pencil icon to change its name or URL, or delete it, in a small popover.
+- **Inline folder rename** — hover a folder and click the pencil icon to rename it in place.
 - **Dark, light, or system theme** and an optional **compact density** mode, both in Options.
 
 ## Installing
@@ -51,13 +52,14 @@ Requires Node 24 (see `.nvmrc`).
 - **Search**: type in the search box in the header. Matching folders force open (without changing their saved collapsed/archived state) and everything else is hidden; clear the box or press Escape to go back to normal. Dragging is disabled while a search is active.
 - **Reorder**: drag a bookmark or folder and drop it near the top or bottom edge of another one in the same list.
 - **Move into a folder**: drag a bookmark or folder and drop it on the middle of a different folder's row to move it inside.
-- **Rename**: hover a bookmark or folder, click the pencil icon, edit, press Enter (or click away) to save, Escape to cancel.
+- **Edit a bookmark**: hover it and click the pencil icon. Change the name or URL and press Enter or **Save**; Escape, **Cancel** or clicking outside closes without saving. A URL without `https://` gets it added. **Delete** asks you to confirm, then removes the bookmark from Chrome itself (not just this page).
+- **Rename a folder**: hover it, click the pencil icon, edit, press Enter (or click away) to save, Escape to cancel.
 - **Options**: click the ⚙ icon top-right to toggle whether default (unfoldered) bookmarks show as favicon-only icons or full title cards, choose a theme (System/Dark/Light), and turn on compact density.
 
 ## Known limitations
 
 - Single-device only for now — archive/collapse state and settings are stored locally (`chrome.storage.local`), not synced across machines.
-- No adding or deleting bookmarks/folders from this page yet — use Chrome's native bookmark manager for that; renaming, reordering, and moving items between folders are all supported here.
+- No adding bookmarks or folders, or deleting folders, from this page yet — use Chrome's native bookmark manager for that. Editing and deleting bookmarks, renaming folders, reordering, and moving items between folders are all supported here.
 - Moving something into a folder always appends it at the end of that folder's contents — you can't choose a specific position within the target folder in one drag.
 - Folders collapsed into the "N archived" summary row aren't drop targets — unarchive or expand one first if you want to drag something into it.
 
