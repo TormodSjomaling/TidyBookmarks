@@ -621,9 +621,26 @@ chrome.storage.local.get(["folderMeta", "settings"], (result) => {
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === "local" && changes.settings) {
+  if (area !== "local") return;
+  let needsRender = false;
+
+  if (changes.settings) {
     settings = Object.assign({}, DEFAULT_SETTINGS, changes.settings.newValue || {});
     applySettings(settings);
-    render();
+    needsRender = true;
   }
+
+  // Other open new-tab pages write folderMeta too. Adopt their changes so this
+  // page's next saveState() doesn't overwrite them with a stale copy. Our own
+  // saves also arrive here; those already match in-memory state, so skip the
+  // re-render to keep in-place collapse toggles flicker-free.
+  if (changes.folderMeta) {
+    const incoming = changes.folderMeta.newValue || {};
+    if (JSON.stringify(incoming) !== JSON.stringify(folderMeta)) {
+      folderMeta = incoming;
+      needsRender = true;
+    }
+  }
+
+  if (needsRender) render();
 });
