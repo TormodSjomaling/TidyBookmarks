@@ -1,10 +1,11 @@
 import { useState, type DragEvent } from "react";
 import { canDropOnto, moveIndex, type DragUnit, type DropPlace } from "../lib/dnd";
+import { isFolder } from "../lib/tree";
 import type { BookmarkNode } from "../lib/types";
 import { useDashboard } from "./dashboard";
 
 export function toUnit(node: BookmarkNode, containerKey: string): DragUnit {
-  return { id: node.id, parentId: node.parentId ?? "", index: node.index ?? 0, containerKey };
+  return { id: node.id, parentId: node.parentId ?? "", index: node.index ?? 0, containerKey, folder: isFolder(node) };
 }
 
 // Moves `source` next to `target` in Chrome, into `target`'s parent if that's a

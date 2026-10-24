@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canDropInto, canDropOnto, dragBand, moveIndex, type DragUnit } from "./dnd";
+import { canDropBeside, canDropInto, canDropOnto, dragBand, moveIndex, type DragUnit } from "./dnd";
 import { buildParentMap } from "./tree";
 
 const unit = (id: string, parentId = "p", containerKey = "list", index = 0): DragUnit => ({
@@ -7,7 +7,9 @@ const unit = (id: string, parentId = "p", containerKey = "list", index = 0): Dra
   parentId,
   index,
   containerKey,
+  folder: false,
 });
+const folderUnit = (id: string, parentId: string): DragUnit => ({ ...unit(id, parentId), folder: true });
 
 describe("canDropOnto", () => {
   it("allows siblings in the same list", () => {
@@ -22,10 +24,6 @@ describe("canDropOnto", () => {
     expect(canDropOnto(unit("a", "bar", "default"), unit("b", "other", "default"))).toBe(false);
   });
 
-  it("allows another parent in the same list when the list spans parents", () => {
-    expect(canDropOnto(unit("a", "bar", "top"), unit("b", "other", "top"), true)).toBe(true);
-    expect(canDropOnto(unit("a", "bar", "top"), unit("b", "other", "elsewhere"), true)).toBe(false);
-  });
 });
 
 describe("canDropInto", () => {
@@ -41,6 +39,39 @@ describe("canDropInto", () => {
   it("allows moving a folder up, or a bookmark anywhere", () => {
     expect(canDropInto(unit("g"), "f", parents)).toBe(true);
     expect(canDropInto(unit("bookmark"), "g", parents)).toBe(true);
+  });
+});
+
+describe("canDropBeside", () => {
+  // bar > work > clients > acme, and bar > personal; other > reading.
+  const parents = buildParentMap([
+    {
+      id: "bar",
+      title: "",
+      children: [
+        { id: "work", title: "", children: [{ id: "clients", title: "", children: [{ id: "acme", title: "", children: [] }] }] },
+        { id: "personal", title: "", children: [] },
+      ],
+    },
+    { id: "other", title: "", children: [{ id: "reading", title: "", children: [] }] },
+  ]);
+
+  it("lets a folder go next to a folder at any level or in another root", () => {
+    expect(canDropBeside(folderUnit("clients", "work"), folderUnit("personal", "bar"), parents)).toBe(true);
+    expect(canDropBeside(folderUnit("acme", "clients"), folderUnit("work", "bar"), parents)).toBe(true);
+    expect(canDropBeside(folderUnit("work", "bar"), folderUnit("reading", "other"), parents)).toBe(true);
+    expect(canDropBeside(folderUnit("personal", "bar"), folderUnit("acme", "clients"), parents)).toBe(true);
+  });
+
+  it("never puts a folder inside itself", () => {
+    expect(canDropBeside(folderUnit("work", "bar"), folderUnit("work", "bar"), parents)).toBe(false);
+    expect(canDropBeside(folderUnit("work", "bar"), folderUnit("clients", "work"), parents)).toBe(false);
+    expect(canDropBeside(folderUnit("work", "bar"), folderUnit("acme", "clients"), parents)).toBe(false);
+  });
+
+  it("is for folders only; bookmarks reorder among their own list", () => {
+    expect(canDropBeside(unit("jira", "work"), folderUnit("personal", "bar"), parents)).toBe(false);
+    expect(canDropBeside(null, folderUnit("personal", "bar"), parents)).toBe(false);
   });
 });
 

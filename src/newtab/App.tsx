@@ -80,7 +80,7 @@ export function App() {
             .filter((section) => section.folders.length > 0)
             .map((section) => (
               <div key={section.root.id}>
-                <FolderList folders={section.folders} parentId={section.root.id} topLevel />
+                <FolderList folders={section.folders} parentId={section.root.id} />
               </div>
             ))
         )}

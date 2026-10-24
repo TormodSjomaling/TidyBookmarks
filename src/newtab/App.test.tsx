@@ -279,6 +279,23 @@ describe("new tab page", () => {
       await waitFor(() => expect(otherOrder()).toEqual(["li", "reading", "work"]));
     });
 
+    it("moves a subfolder up a level by dropping it beside a folder there", async () => {
+      drag("acme", header("personal"), 405);
+      await waitFor(() => expect(barOrder()).toEqual(["g", "work", "acme", "personal"]));
+      expect(fake.find("work")!.children!.map((c) => c.id)).not.toContain("acme");
+    });
+
+    it("moves a subfolder up a level by dropping it on its parent's contents", async () => {
+      drag("acme", folderEl("work").querySelector('[data-bookmark-id="jira"]')!, 160);
+      await waitFor(() => expect(barOrder()).toEqual(["g", "work", "acme", "personal"]));
+    });
+
+    it("does nothing over the dragged folder's own contents", () => {
+      fireEvent.dragStart(header("acme"), { dataTransfer });
+      fireEvent.dragOver(folderEl("acme").querySelector('[data-bookmark-id="inv"]')!, { clientY: 260, dataTransfer });
+      expect(document.querySelector(".drop-before, .drop-after, .drag-over-into")).toBeNull();
+    });
+
     it("moves into a sibling from the middle of its header", async () => {
       drag("personal", header("work"), 120);
       await waitFor(() => expect(fake.find("personal")!.parentId).toBe("work"));

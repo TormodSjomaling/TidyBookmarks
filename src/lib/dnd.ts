@@ -1,23 +1,36 @@
 import { isSelfOrDescendant, type ParentMap } from "./tree";
 
 // A drag source or target. `containerKey` identifies the rendered list it sits
-// in. Lists can combine children of several Chrome roots (the default-bookmarks
-// row, the top-level folders), so reordering also checks the real parent unless
-// the list allows moving across parents.
+// in; reordering a bookmark requires the same list *and* the same real parent,
+// because the default-bookmarks row combines children of several Chrome roots
+// into one list.
 export interface DragUnit {
   id: string;
   parentId: string;
   // Position among all of the parent's children (bookmarks and folders alike).
   index: number;
   containerKey: string;
+  folder: boolean;
 }
 
-export function canDropOnto(dragged: DragUnit | null, target: DragUnit, acrossParents = false): boolean {
+export function canDropOnto(dragged: DragUnit | null, target: DragUnit): boolean {
   return (
     dragged !== null &&
     dragged.id !== target.id &&
     dragged.containerKey === target.containerKey &&
-    (acrossParents || dragged.parentId === target.parentId)
+    dragged.parentId === target.parentId
+  );
+}
+
+// A folder can be dropped right before or after any other folder, at any level
+// and in any Chrome root: it moves into that folder's parent. Only it can't end
+// up inside itself.
+export function canDropBeside(dragged: DragUnit | null, target: DragUnit, parents: ParentMap): boolean {
+  return (
+    dragged !== null &&
+    dragged.folder &&
+    dragged.id !== target.id &&
+    !isSelfOrDescendant(parents, target.parentId, dragged.id)
   );
 }
 

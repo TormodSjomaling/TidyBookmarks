@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type DragEvent, type MouseEvent } from "react";
-import { canDropInto, canDropOnto, dragBand, type DragBand } from "../lib/dnd";
+import { canDropBeside, canDropInto, dragBand, type DragBand } from "../lib/dnd";
 import { toggleArchived, toggleCollapsed, unarchive } from "../lib/folderMeta";
 import { getMeta, groupFolders, isArchived, isFolder, visibleChildren } from "../lib/tree";
 import type { BookmarkNode } from "../lib/types";
@@ -19,23 +19,12 @@ export function BookmarkGrid({ bookmarks, containerKey }: { bookmarks: BookmarkN
   );
 }
 
-// The top-level folders of every Chrome root render as one list, so folders
-// reorder across roots there (moving between e.g. the bookmarks bar and Other
-// bookmarks).
-const TOP_LEVEL_KEY = "folders:top";
-
 // Sibling folders under one parent: plain ones first in native order, then
 // archived ones, folded into a summary row once there are two or more.
-interface FolderListProps {
-  folders: BookmarkNode[];
-  parentId: string;
-  topLevel?: boolean;
-}
-
-export function FolderList({ folders, parentId, topLevel = false }: FolderListProps) {
+export function FolderList({ folders, parentId }: { folders: BookmarkNode[]; parentId: string }) {
   const { folderMeta, query } = useDashboard();
   const { individual, summarized } = groupFolders(folders, folderMeta, query);
-  const containerKey = topLevel ? TOP_LEVEL_KEY : `folders:${parentId}`;
+  const containerKey = `folders:${parentId}`;
 
   return (
     <>
@@ -100,22 +89,23 @@ function Folder({ node, containerKey }: FolderProps) {
   const headerRef = useRef<HTMLDivElement>(null);
   const [dropMode, setDropMode] = useState<DragBand | null>(null);
 
-  // The whole folder (header and contents) is a drop target. For a sibling
-  // folder, the header's top edge drops before this folder, its middle drops
-  // into it, and anything below (the bottom edge of a collapsed or empty
-  // header, or an open folder's contents) drops after it, so you can drag past an
-  // open one without aiming for a thin strip. Anything else (a bookmark, a
-  // folder from elsewhere) can only be dropped into, anywhere on the header.
-  // Archived folders can't be dragged themselves (their position is computed),
-  // but still accept drops.
+  // The whole folder (header and contents) is a drop target. For another
+  // folder, from any level, the header's top edge drops before this folder, its
+  // middle drops into it, and anything below (the bottom edge of a collapsed or
+  // empty header, or an open folder's contents) drops after it. "Before" and
+  // "after" move the folder into this folder's parent, which is how a subfolder
+  // moves up a level, and dropping on contents means you can drag past an open
+  // folder without aiming for a thin strip. A bookmark can only be dropped into,
+  // anywhere on the header. Archived folders can't be dragged themselves (their
+  // position is computed), but still accept drops.
   const dropModeAt = (e: DragEvent): DragBand | null => {
     const source = dragged.current;
     const into = canDropInto(source, node.id, parents) ? "into" : null;
-    const sibling = canDropOnto(source, unit, containerKey === TOP_LEVEL_KEY);
+    const beside = canDropBeside(source, unit, parents);
     const header = headerRef.current!.getBoundingClientRect();
-    if (e.clientY >= header.bottom) return sibling ? "after" : null;
+    if (e.clientY >= header.bottom) return beside ? "after" : null;
     const band = dragBand(e.clientY, header.top, header.height);
-    if (!sibling || band === "into") return into;
+    if (!beside || band === "into") return into;
     // An open folder's header borders its own contents at the bottom, so a
     // drop there reads as "into", not "after the whole folder". An open but
     // empty folder has no contents to drop after it on, so it acts collapsed.
@@ -123,14 +113,28 @@ function Folder({ node, containerKey }: FolderProps) {
     return band;
   };
 
+  // What a drag event over this folder would do, claiming it if this folder
+  // is the one to handle it.
+  const resolveDrop = (e: DragEvent): DragBand | null => {
+    if (isClaimed(e)) return null;
+    // Over the dragged folder itself (its own contents included) nothing
+    // happens; claim the event so its ancestors don't read it as "after" them.
+    if (dragged.current?.id === node.id) {
+      claim(e);
+      return null;
+    }
+    const mode = dropModeAt(e);
+    if (mode) claim(e);
+    return mode;
+  };
+
   const dropProps = query
     ? {}
     : {
         onDragOver: (e: DragEvent<HTMLDivElement>) => {
-          const mode = isClaimed(e) ? null : dropModeAt(e);
+          const mode = resolveDrop(e);
           setDropMode(mode);
           if (!mode) return;
-          claim(e);
           e.preventDefault();
           e.dataTransfer.dropEffect = "move";
         },
@@ -139,11 +143,10 @@ function Folder({ node, containerKey }: FolderProps) {
           if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropMode(null);
         },
         onDrop: (e: DragEvent<HTMLDivElement>) => {
-          const mode = isClaimed(e) ? null : dropModeAt(e);
+          const mode = resolveDrop(e);
           const source = dragged.current;
           setDropMode(null);
           if (!mode || !source) return;
-          claim(e);
           e.preventDefault();
           if (mode === "into") chrome.bookmarks.move(source.id, { parentId: node.id });
           else applyReorder(source, unit, mode);
