@@ -1,5 +1,23 @@
-.DS_Store
-.claude/settings.local.json
+# Dependencies and build output
 node_modules/
 dist/
 *.zip
+coverage/
+
+# Keys and secrets. Chrome's "Pack extension" writes the extension's private
+# key as a .pem next to the folder; it must never be committed. Store
+# credentials live in GitHub repository secrets, not in files.
+*.pem
+*.crx
+.env
+.env.*
+
+# Logs
+*.log
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+
+# Personal Claude Code settings (shared ones in .claude/ are fine to commit)
+.claude/settings.local.json
