@@ -1,6 +1,6 @@
 {
   "name": "tidy-bookmarks",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "type": "module",
   "description": "A tidy new-tab bookmark dashboard that keeps nested folders organized and archives old clients out of the way.",
