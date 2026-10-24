@@ -10,7 +10,7 @@ Tidy Bookmarks is a Manifest V3 Chrome extension that overrides the new-tab page
 
 Requires Node 24 (`.nvmrc`).
 
-- **Browser preview**: `npm run dev:web` serves the pages at localhost with hot reload, backed by the fake `chrome` API (`src/dev/fakeChrome.ts`) and sample bookmarks (`src/dev/sampleBookmarks.ts`). `src/dev/webPreview.ts` is injected only in this mode by the `webPreview` plugin in `vite.config.ts`; it persists to `localStorage`, syncs storage across preview tabs, and serves a placeholder at `/_favicon/`. None of `src/dev/` ships in production builds.
+- **Browser preview**: `npm run dev:web` serves the pages at localhost with hot reload, backed by the fake `chrome` API (`src/dev/fakeChrome.ts`) and sample bookmarks (`src/dev/sampleBookmarks.ts`). `src/dev/webPreview.ts` is injected only in this mode by the `webPreview` plugin in `vite.config.ts`; it persists to `localStorage`, syncs storage across preview tabs, and the dev server answers `/_favicon/` with generated per-site icons (`src/dev/placeholderFavicon.ts`). None of `src/dev/` ships in production builds.
 - **Dev loop (real extension)**: `npm run dev` (Vite build in watch mode into `dist/`). Load `dist/` via `chrome://extensions` → Developer mode → "Load unpacked". After a rebuild, click the reload icon on the extension's card, then refresh the new tab (or Options tab).
 - **Test**: `npm test` (Vitest, jsdom). `npm run test:watch` for watch mode. A single file: `npx vitest run src/lib/tree.test.ts`.
 - **Typecheck**: `npm run typecheck` (`tsc`, strict, no emit).

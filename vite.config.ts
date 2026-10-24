@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import react from "@vitejs/plugin-react";
 import type { Plugin } from "vite";
 import { defineConfig } from "vitest/config";
+import { placeholderFavicon } from "./src/dev/placeholderFavicon";
 
 // Emits manifest.json (with package.json's version stamped in, so package.json
 // is the single source of truth for the version) and the PNG icons into dist/.
@@ -21,11 +22,9 @@ function extensionFiles(): Plugin {
   };
 }
 
-const PLACEHOLDER_FAVICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#8a8a8a" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 3.8 5.5 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-5.5-3.8-9S9.5 5.5 12 3z"/></svg>`;
-
 // `npm run dev:web`: serves the pages as a normal website backed by a fake
 // chrome API with sample bookmarks (src/dev/webPreview.ts), plus a
-// placeholder for Chrome's extension-only /_favicon/ endpoint.
+// stand-in for Chrome's extension-only /_favicon/ endpoint.
 function webPreview(): Plugin {
   return {
     name: "web-preview",
@@ -34,9 +33,10 @@ function webPreview(): Plugin {
       { tag: "script", attrs: { type: "module", src: "/src/dev/webPreview.ts" }, injectTo: "head-prepend" },
     ],
     configureServer(server) {
-      server.middlewares.use("/_favicon/", (_req, res) => {
+      server.middlewares.use("/_favicon/", (req, res) => {
+        const pageUrl = new URL(req.url ?? "", "http://localhost").searchParams.get("pageUrl") ?? "";
         res.setHeader("Content-Type", "image/svg+xml");
-        res.end(PLACEHOLDER_FAVICON);
+        res.end(placeholderFavicon(pageUrl));
       });
     },
   };

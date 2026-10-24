@@ -33,7 +33,7 @@ Install it from the [Chrome Web Store](https://chromewebstore.google.com/detail/
 
 Requires Node 24 (see `.nvmrc`).
 
-**Quickest: browser preview.** `npm run dev:web` opens the new-tab page at localhost with sample bookmarks, and updates instantly as you edit code. Changes you make (archiving, renaming, dragging) are kept until you click **Reset** in the corner badge. It uses fake data and placeholder favicons, so check Chrome-specific behavior in the real extension before releasing.
+**Quickest: browser preview.** `npm run dev:web` opens the new-tab page at localhost with sample bookmarks, and updates instantly as you edit code. Changes you make (archiving, renaming, dragging) are kept until you click **Reset** in the corner badge. It uses fake data and generated stand-in favicons, so check Chrome-specific behavior in the real extension before releasing.
 
 **Real extension:**
 
