@@ -42,24 +42,13 @@ export function App() {
     .filter((section) => section.folders.length > 0 || section.bookmarks.length > 0);
 
   const defaultBookmarks: BookmarkNode[] = sections.flatMap((section) => section.bookmarks);
-  const defaultSiblings: DragUnit[] = defaultBookmarks.map((node) => ({
-    id: node.id,
-    parentId: node.parentId ?? "",
-    containerKey: DEFAULT_BOOKMARKS_KEY,
-  }));
 
   return (
     <DashboardContext.Provider value={dashboard}>
       <header id="page-header">
         <div id="default-bookmarks" className="bookmark-grid default-grid" hidden={defaultBookmarks.length === 0}>
           {defaultBookmarks.map((node) => (
-            <Bookmark
-              key={node.id}
-              node={node}
-              isDefault
-              containerKey={DEFAULT_BOOKMARKS_KEY}
-              siblings={defaultSiblings}
-            />
+            <Bookmark key={node.id} node={node} isDefault containerKey={DEFAULT_BOOKMARKS_KEY} />
           ))}
         </div>
         <div id="header-right">

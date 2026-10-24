@@ -6,6 +6,8 @@ import { isSelfOrDescendant, type ParentMap } from "./tree";
 export interface DragUnit {
   id: string;
   parentId: string;
+  // Position among all of the parent's children (bookmarks and folders alike).
+  index: number;
   containerKey: string;
 }
 
@@ -26,27 +28,22 @@ export function canDropInto(dragged: DragUnit | null, folderId: string, parents:
 
 export type DragBand = "before" | "after" | "into";
 
-// Top/bottom quarter of a folder header means reorder; the middle half means move into.
+// Top/bottom 30% of a folder header means reorder; the middle means move into.
 export function dragBand(clientY: number, top: number, height: number): DragBand {
   const ratio = (clientY - top) / height;
-  if (ratio < 0.25) return "before";
-  if (ratio > 0.75) return "after";
+  if (ratio < 0.3) return "before";
+  if (ratio > 0.7) return "after";
   return "into";
 }
 
-// Given the units of one rendered list in display order, returns the ids that
-// share the dragged unit's parent in their new order. Each id's position in the
-// result is the index to pass to chrome.bookmarks.move.
-export function reorderedIds(units: DragUnit[], draggedId: string, targetId: string): string[] {
-  const dragged = units.find((u) => u.id === draggedId);
-  const draggedIndex = units.findIndex((u) => u.id === draggedId);
-  const targetIndex = units.findIndex((u) => u.id === targetId);
-  if (!dragged || targetIndex === -1) return [];
+export type DropPlace = "before" | "after";
 
-  // Dragging forward lands after the target, dragging backward lands before it.
-  const without = units.filter((u) => u.id !== draggedId);
-  const targetPos = without.findIndex((u) => u.id === targetId);
-  without.splice(draggedIndex < targetIndex ? targetPos + 1 : targetPos, 0, dragged);
-
-  return without.filter((u) => u.parentId === dragged.parentId).map((u) => u.id);
+// The index to pass to chrome.bookmarks.move to put `dragged` right before or
+// after its sibling `target`. Without a place (bookmark tiles), dragging forward
+// lands after the target and dragging backward lands before it. Chrome counts a
+// same-parent index against the list before the moved node is taken out, so
+// this is just the target's own position, or the one after it.
+export function moveIndex(dragged: DragUnit, target: DragUnit, place?: DropPlace): number {
+  const where = place ?? (dragged.index < target.index ? "after" : "before");
+  return where === "before" ? target.index : target.index + 1;
 }

@@ -3,6 +3,8 @@
 export interface BookmarkNode {
   id: string;
   parentId?: string;
+  // Position within the parent; Chrome sets it on every node except the root.
+  index?: number;
   title: string;
   url?: string;
   children?: BookmarkNode[];

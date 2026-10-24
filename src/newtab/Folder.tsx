@@ -1,30 +1,19 @@
-import { useEffect, useState, type DragEvent, type MouseEvent } from "react";
-import { canDropInto, canDropOnto, dragBand, type DragUnit } from "../lib/dnd";
+import { useEffect, useRef, useState, type DragEvent, type MouseEvent } from "react";
+import { canDropInto, canDropOnto, dragBand, type DragBand } from "../lib/dnd";
 import { toggleArchived, toggleCollapsed, unarchive } from "../lib/folderMeta";
 import { getMeta, groupFolders, isArchived, isFolder, visibleChildren } from "../lib/tree";
 import type { BookmarkNode } from "../lib/types";
 import { Bookmark } from "./Bookmark";
 import { useDashboard } from "./dashboard";
-import { applyReorder, useDragSource } from "./drag";
+import { applyReorder, claim, isClaimed, toUnit, useDragSource } from "./drag";
 import { InlineEdit } from "./InlineEdit";
-
-function toUnits(nodes: BookmarkNode[], containerKey: string): DragUnit[] {
-  return nodes.map((node) => ({ id: node.id, parentId: node.parentId ?? "", containerKey }));
-}
 
 // A list of bookmark tiles sharing one parent, as rendered inside a folder.
 export function BookmarkGrid({ bookmarks, containerKey }: { bookmarks: BookmarkNode[]; containerKey: string }) {
-  const siblings = toUnits(bookmarks, containerKey);
   return (
     <div className="bookmark-grid">
       {bookmarks.map((bookmark) => (
-        <Bookmark
-          key={bookmark.id}
-          node={bookmark}
-          isDefault={false}
-          containerKey={containerKey}
-          siblings={siblings}
-        />
+        <Bookmark key={bookmark.id} node={bookmark} isDefault={false} containerKey={containerKey} />
       ))}
     </div>
   );
@@ -36,12 +25,11 @@ export function FolderList({ folders, parentId }: { folders: BookmarkNode[]; par
   const { folderMeta, query } = useDashboard();
   const { individual, summarized } = groupFolders(folders, folderMeta, query);
   const containerKey = `folders:${parentId}`;
-  const siblings = toUnits(individual, containerKey);
 
   return (
     <>
       {individual.map((folder) => (
-        <Folder key={folder.id} node={folder} containerKey={containerKey} siblings={siblings} />
+        <Folder key={folder.id} node={folder} containerKey={containerKey} />
       ))}
       {summarized.length > 0 && <ArchivedSummary folders={summarized} />}
     </>
@@ -82,10 +70,9 @@ const ArchiveIcon = () => (
 interface FolderProps {
   node: BookmarkNode;
   containerKey: string;
-  siblings: DragUnit[];
 }
 
-function Folder({ node, containerKey, siblings }: FolderProps) {
+function Folder({ node, containerKey }: FolderProps) {
   const { folderMeta, updateFolderMeta, query, parents, dragged } = useDashboard();
   const meta = getMeta(folderMeta, node.id);
   // Search forces matching folders open without touching their stored state.
@@ -97,20 +84,59 @@ function Folder({ node, containerKey, siblings }: FolderProps) {
   useEffect(() => setPendingTitle(null), [node.title]);
   const title = pendingTitle ?? node.title;
 
-  const unit: DragUnit = { id: node.id, parentId: node.parentId ?? "", containerKey };
+  const unit = toUnit(node, containerKey);
   const { dragging, sourceProps } = useDragSource(unit);
-  const [dropMode, setDropMode] = useState<"reorder" | "into" | null>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [dropMode, setDropMode] = useState<DragBand | null>(null);
 
-  // The header is a drop target in two ways depending on where the pointer is:
-  // its top/bottom quarters reorder among siblings, its middle moves the dragged
-  // item into this folder. Archived folders can't be dragged themselves (their
-  // position is computed), but still accept items dropped into them.
-  const dropModeAt = (e: DragEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const band = dragBand(e.clientY, rect.top, rect.height);
-    if (band !== "into") return canDropOnto(dragged.current, unit) ? "reorder" : null;
-    return canDropInto(dragged.current, node.id, parents) ? "into" : null;
+  // The whole folder (header and contents) is a drop target. For a sibling
+  // folder, the header's top edge drops before this folder, its middle drops
+  // into it, and anything below (the bottom edge of a collapsed header, or the
+  // open folder's contents) drops after it, so you can drag a folder past an
+  // open one without aiming for a thin strip. Anything else (a bookmark, a
+  // folder from elsewhere) can only be dropped into, anywhere on the header.
+  // Archived folders can't be dragged themselves (their position is computed),
+  // but still accept drops.
+  const dropModeAt = (e: DragEvent): DragBand | null => {
+    const source = dragged.current;
+    const into = canDropInto(source, node.id, parents) ? "into" : null;
+    const sibling = canDropOnto(source, unit);
+    const header = headerRef.current!.getBoundingClientRect();
+    if (e.clientY >= header.bottom) return sibling ? "after" : null;
+    const band = dragBand(e.clientY, header.top, header.height);
+    if (!sibling || band === "into") return into;
+    // An open folder's header borders its own contents at the bottom, so a
+    // drop there reads as "into", not "after the whole folder".
+    if (band === "after" && !collapsed) return into;
+    return band;
   };
+
+  const dropProps = query
+    ? {}
+    : {
+        onDragOver: (e: DragEvent<HTMLDivElement>) => {
+          const mode = isClaimed(e) ? null : dropModeAt(e);
+          setDropMode(mode);
+          if (!mode) return;
+          claim(e);
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+        },
+        onDragLeave: (e: DragEvent<HTMLDivElement>) => {
+          // Moving onto one of this folder's own descendants isn't leaving it.
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropMode(null);
+        },
+        onDrop: (e: DragEvent<HTMLDivElement>) => {
+          const mode = isClaimed(e) ? null : dropModeAt(e);
+          const source = dragged.current;
+          setDropMode(null);
+          if (!mode || !source) return;
+          claim(e);
+          e.preventDefault();
+          if (mode === "into") chrome.bookmarks.move(source.id, { parentId: node.id });
+          else applyReorder(source, unit, mode);
+        },
+      };
 
   const headerProps = query
     ? {}
@@ -120,23 +146,6 @@ function Folder({ node, containerKey, siblings }: FolderProps) {
         onClick: (e: MouseEvent) => {
           if ((e.target as Element).closest(".folder-actions")) return;
           updateFolderMeta((current) => toggleCollapsed(current, node.id, Date.now()));
-        },
-        onDragOver: (e: DragEvent<HTMLDivElement>) => {
-          const mode = dropModeAt(e);
-          setDropMode(mode);
-          if (!mode) return;
-          e.preventDefault();
-          e.dataTransfer.dropEffect = "move";
-        },
-        onDragLeave: () => setDropMode(null),
-        onDrop: (e: DragEvent<HTMLDivElement>) => {
-          const mode = dropModeAt(e);
-          const source = dragged.current;
-          setDropMode(null);
-          if (!mode || !source) return;
-          e.preventDefault();
-          if (mode === "reorder") applyReorder(siblings, source.id, node.id);
-          else chrome.bookmarks.move(source.id, { parentId: node.id });
         },
       };
 
@@ -153,15 +162,16 @@ function Folder({ node, containerKey, siblings }: FolderProps) {
     collapsed && "collapsed",
     archived && "archived",
     dragging && "dragging",
-    dropMode === "reorder" && "drag-over",
+    dropMode === "before" && "drop-before",
+    dropMode === "after" && "drop-after",
     dropMode === "into" && "drag-over-into",
   ]
     .filter(Boolean)
     .join(" ");
 
   return (
-    <div className={className} data-folder-id={node.id} data-parent-id={node.parentId}>
-      <div className="folder-header" {...headerProps}>
+    <div className={className} data-folder-id={node.id} data-parent-id={node.parentId} {...dropProps}>
+      <div className="folder-header" ref={headerRef} {...headerProps}>
         <span className="chevron">▼</span>
         {renaming ? (
           <InlineEdit

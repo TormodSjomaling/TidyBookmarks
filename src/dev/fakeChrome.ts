@@ -43,6 +43,15 @@ export function installFakeChrome(roots: BookmarkNode[], initialStorage: Record<
     });
   fixParents(tree);
 
+  // Like Chrome, getTree reports each node's position within its parent.
+  const withIndexes = (node: BookmarkNode): BookmarkNode => {
+    node.children?.forEach((child, index) => {
+      child.index = index;
+      withIndexes(child);
+    });
+    return node;
+  };
+
   const find = (id: string, node: BookmarkNode = tree): BookmarkNode | undefined => {
     if (node.id === id) return node;
     for (const child of node.children ?? []) {
@@ -82,7 +91,7 @@ export function installFakeChrome(roots: BookmarkNode[], initialStorage: Record<
     },
     bookmarks: {
       ...bookmarkEvents,
-      getTree: async () => [structuredClone(tree)],
+      getTree: async () => [withIndexes(structuredClone(tree))],
       update: async (id: string, changes: { title?: string; url?: string }) => {
         const node = find(id)!;
         if (changes.url !== undefined) {
@@ -105,8 +114,12 @@ export function installFakeChrome(roots: BookmarkNode[], initialStorage: Record<
         const node = find(id)!;
         const oldParent = find(node.parentId!)!;
         const newParent = destination.parentId ? find(destination.parentId)! : oldParent;
+        const oldIndex = oldParent.children!.indexOf(node);
         oldParent.children = oldParent.children!.filter((c) => c.id !== id);
-        const index = destination.index ?? newParent.children!.length;
+        let index = destination.index ?? newParent.children!.length;
+        // Like Chrome, an index within the same parent counts positions in the
+        // list before the node is taken out of it.
+        if (newParent === oldParent && destination.index !== undefined && index > oldIndex) index--;
         newParent.children!.splice(index, 0, node);
         node.parentId = newParent.id;
         bookmarkEvents.onMoved.fire(id, {});

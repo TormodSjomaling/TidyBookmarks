@@ -25,7 +25,7 @@ Tests run against a fake `chrome` API (`src/dev/fakeChrome.ts`, shared with the 
   - `types.ts` — `BookmarkNode`, `FolderMeta`/`FolderMetaMap`, `Settings`.
   - `tree.ts` — `isArchived`, search (`nodeMatchesQuery`, `visibleChildren`), sibling ordering/grouping (`orderFolders`, `groupFolders`), parent lookup (`buildParentMap`, `isSelfOrDescendant`).
   - `folderMeta.ts` — state transitions: `toggleCollapsed`, `toggleArchived`, `unarchive`. Each returns a new map.
-  - `dnd.ts` — drop guards (`canDropOnto`, `canDropInto`), `dragBand`, `reorderedIds`.
+  - `dnd.ts` — drop guards (`canDropOnto`, `canDropInto`), `dragBand`, `moveIndex`.
 - `src/newtab/` — the new-tab page. `App.tsx` (header, search, root sections), `Folder.tsx` (`FolderList`, `Folder`, `ArchivedSummary`, `BookmarkGrid`), `Bookmark.tsx`, `BookmarkEditor.tsx` (edit/delete popover), `InlineEdit.tsx` (folder rename), `hooks.ts` (Chrome data hooks), `drag.ts` (drag-and-drop hooks), `dashboard.ts` (shared context).
 - `src/options/` — the Options page (`Options.tsx`), a full tab (`options_ui.open_in_tab: true`) opened from the ⚙ button via `chrome.runtime.openOptionsPage()`.
 - `src/shared/` — used by both pages: `theme.css` and `settings.ts`.
@@ -62,10 +62,11 @@ While `query` is non-empty:
 - Collapse-on-click and all drag-and-drop wiring are omitted. Search shows a partial tree, and reordering against a partial index would be unsafe.
 
 ### Drag-and-drop
-The dragged item lives in `DashboardContext.dragged` (a ref, not state — dragover handlers read it synchronously). Every source/target is a `DragUnit { id, parentId, containerKey }`, where `containerKey` names the rendered list it sits in.
-- **Reorder** (`canDropOnto`) requires the same `containerKey` *and* the same real `parentId`. The parent check exists because the header's default-bookmarks row combines loose bookmarks from several Chrome roots (bookmarks bar + other bookmarks) into one list. `applyReorder` (`drag.ts`) writes each sibling's new index with `chrome.bookmarks.move`.
+The dragged item lives in `DashboardContext.dragged` (a ref, not state — dragover handlers read it synchronously). Every source/target is a `DragUnit { id, parentId, index, containerKey }`, where `index` is the node's real position among all its parent's children and `containerKey` names the rendered list it sits in.
+- **Reorder** (`canDropOnto`) requires the same `containerKey` *and* the same real `parentId`. The parent check exists because the header's default-bookmarks row combines loose bookmarks from several Chrome roots (bookmarks bar + other bookmarks) into one list. `applyReorder` (`drag.ts`) is a single `chrome.bookmarks.move` to the index from `moveIndex`. Chrome counts a same-parent index against the list *before* the node is removed (the fake mirrors this), so "before target" is `target.index` and "after" is `target.index + 1`. Using real indexes means folders and loose bookmarks sharing a parent (the bookmarks bar) keep their relative order in Chrome.
 - **Bookmarks** are reorder-only sources and targets (`useDragSource`/`useReorderTarget`).
-- **Folder headers** branch on pointer position (`dragBand`): top/bottom quarter → reorder; middle half → **move into** (`canDropInto`, which refuses dropping a folder into itself or a descendant, via the parent map). Move-into appends at the end of the target.
+- **Folders**: the whole `.folder` element (header and contents) is the drop target. For a sibling folder, the header's top 30% (`dragBand`) drops before, the middle **moves into** (`canDropInto`, which refuses dropping a folder into itself or a descendant, via the parent map), and anything below drops after: the contents of an open folder, or the bottom 30% of a collapsed one's header (an open folder's header bottom means "into"). This lets you drag past a long open folder without aiming for a thin strip. Non-siblings can only move into, from anywhere on the header. Move-into appends at the end of the target. `.drop-before`/`.drop-after` draw an insertion line.
+- Because folders nest, drag events bubble through every ancestor folder. The innermost target that accepts an event `claim`s it (`drag.ts`, a `WeakSet` of native events) and ancestors stand down, so an open parent doesn't also show "after" while a child shows "into".
 - Archived folders aren't draggable (they're algorithmically sorted, so a manual position would be overwritten) but do accept move-into drops. Folders folded into the `.archived-summary` row aren't drop targets at all.
 
 ### Rendering and flicker

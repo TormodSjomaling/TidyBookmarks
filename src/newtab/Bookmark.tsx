@@ -1,9 +1,8 @@
 import { useEffect, useId, useState } from "react";
-import type { DragUnit } from "../lib/dnd";
 import type { BookmarkNode } from "../lib/types";
 import { BookmarkEditor } from "./BookmarkEditor";
 import { faviconUrl, useDashboard } from "./dashboard";
-import { useDragSource, useReorderTarget } from "./drag";
+import { toUnit, useDragSource, useReorderTarget } from "./drag";
 
 interface Props {
   node: BookmarkNode;
@@ -11,11 +10,9 @@ interface Props {
   // row, favicon-only when settings.faviconOnlyDefault is on.
   isDefault: boolean;
   containerKey: string;
-  // Every bookmark in the same rendered list, in display order, for reordering.
-  siblings: DragUnit[];
 }
 
-export function Bookmark({ node, isDefault, containerKey, siblings }: Props) {
+export function Bookmark({ node, isDefault, containerKey }: Props) {
   const { settings, query } = useDashboard();
   const [editing, setEditing] = useState(false);
   const editorId = useId();
@@ -23,9 +20,9 @@ export function Bookmark({ node, isDefault, containerKey, siblings }: Props) {
   const [pending, setPending] = useState<{ title: string; url: string } | null>(null);
   useEffect(() => setPending(null), [node.title, node.url]);
 
-  const unit: DragUnit = { id: node.id, parentId: node.parentId ?? "", containerKey };
+  const unit = toUnit(node, containerKey);
   const { dragging, sourceProps } = useDragSource(unit);
-  const { over, targetProps } = useReorderTarget(unit, siblings);
+  const { over, targetProps } = useReorderTarget(unit);
   const dndEnabled = !query;
 
   const url = pending?.url ?? node.url ?? "";

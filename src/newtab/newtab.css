@@ -74,6 +74,7 @@ main#app {
 }
 
 .folder {
+  position: relative;
   border-radius: 6px;
 }
 
@@ -101,9 +102,26 @@ main#app {
   opacity: 0.4;
 }
 
-.folder.drag-over > .folder-header {
-  outline: 2px dashed var(--accent);
-  outline-offset: 2px;
+/* Where a dragged sibling folder will land: a line above the folder, or below
+   all of its contents. */
+.folder.drop-before::before,
+.folder.drop-after::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  pointer-events: none;
+}
+
+.folder.drop-before::before {
+  top: -2px;
+}
+
+.folder.drop-after::after {
+  bottom: -2px;
 }
 
 .folder.drag-over-into > .folder-header {

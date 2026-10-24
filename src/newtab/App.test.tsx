@@ -20,6 +20,7 @@ const roots: BookmarkNode[] = [
           { id: "old2", title: "Old client 2", children: [] },
         ],
       },
+      { id: "personal", title: "Personal", children: [{ id: "bank", title: "Bank", url: "https://bank.example" }] },
     ],
   },
   { id: "2", title: "Other bookmarks", children: [{ id: "li", title: "LinkedIn", url: "https://linkedin.com" }] },
@@ -225,5 +226,60 @@ describe("new tab page", () => {
     await waitFor(() =>
       expect(document.querySelector('[data-bookmark-id="li"] a')!.getAttribute("title")).toBe("LinkedIn Jobs")
     );
+  });
+
+  describe("dragging folders", () => {
+    // jsdom has no layout, so give each folder header a fixed box to aim at.
+    const placeHeader = (id: string, top: number) => {
+      header(id).getBoundingClientRect = () => ({ top, bottom: top + 40, height: 40 }) as DOMRect;
+    };
+    const dataTransfer = { effectAllowed: "", dropEffect: "" };
+    const drag = (fromId: string, onto: Element, clientY: number) => {
+      fireEvent.dragStart(header(fromId), { dataTransfer });
+      fireEvent.dragOver(onto, { clientY, dataTransfer });
+      fireEvent.drop(onto, { clientY, dataTransfer });
+      fireEvent.dragEnd(header(fromId), { dataTransfer });
+    };
+    const barOrder = () => fake.find("1")!.children!.map((c) => c.id);
+
+    beforeEach(async () => {
+      await renderApp();
+      placeHeader("work", 100);
+      placeHeader("acme", 200);
+      placeHeader("personal", 400);
+    });
+
+    it("drops after an open sibling from anywhere in its contents, leaving loose bookmarks in place", async () => {
+      drag("work", folderEl("personal").querySelector('[data-bookmark-id="bank"]')!, 460);
+      await waitFor(() => expect(barOrder()).toEqual(["g", "personal", "work"]));
+    });
+
+    it("drops before a sibling from the top edge of its header", async () => {
+      drag("personal", header("work"), 105);
+      await waitFor(() => expect(barOrder()).toEqual(["g", "personal", "work"]));
+    });
+
+    it("moves into a sibling from the middle of its header", async () => {
+      drag("personal", header("work"), 120);
+      await waitFor(() => expect(fake.find("personal")!.parentId).toBe("work"));
+    });
+
+    it("shows a drop line where the folder will land", () => {
+      fireEvent.dragStart(header("work"), { dataTransfer });
+      fireEvent.dragOver(folderEl("personal").querySelector(".folder-children")!, { clientY: 460, dataTransfer });
+      expect(folderEl("personal").classList.contains("drop-after")).toBe(true);
+      fireEvent.dragOver(header("personal"), { clientY: 402, dataTransfer });
+      expect(folderEl("personal").classList.contains("drop-before")).toBe(true);
+      expect(folderEl("personal").classList.contains("drop-after")).toBe(false);
+    });
+
+    it("lets a nested folder take the drop instead of its open parent", async () => {
+      fireEvent.dragStart(header("personal"), { dataTransfer });
+      fireEvent.dragOver(header("acme"), { clientY: 220, dataTransfer });
+      expect(folderEl("acme").classList.contains("drag-over-into")).toBe(true);
+      expect(folderEl("work").className).not.toMatch(/drop-|drag-over/);
+      fireEvent.drop(header("acme"), { clientY: 220, dataTransfer });
+      await waitFor(() => expect(fake.find("personal")!.parentId).toBe("acme"));
+    });
   });
 });

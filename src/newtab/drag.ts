@@ -1,15 +1,24 @@
 import { useState, type DragEvent } from "react";
-import { canDropOnto, reorderedIds, type DragUnit } from "../lib/dnd";
+import { canDropOnto, moveIndex, type DragUnit, type DropPlace } from "../lib/dnd";
+import type { BookmarkNode } from "../lib/types";
 import { useDashboard } from "./dashboard";
 
-// Writes a new sibling order to Chrome. The tree re-reads itself from the
-// resulting onMoved events (see useBookmarkTree).
-export async function applyReorder(siblings: DragUnit[], draggedId: string, targetId: string) {
-  const ids = reorderedIds(siblings, draggedId, targetId);
-  for (const [index, id] of ids.entries()) {
-    await chrome.bookmarks.move(id, { index });
-  }
+export function toUnit(node: BookmarkNode, containerKey: string): DragUnit {
+  return { id: node.id, parentId: node.parentId ?? "", index: node.index ?? 0, containerKey };
 }
+
+// Moves `source` next to its sibling `target` in Chrome. The tree re-reads
+// itself from the resulting onMoved event (see useBookmarkTree).
+export function applyReorder(source: DragUnit, target: DragUnit, place?: DropPlace) {
+  return chrome.bookmarks.move(source.id, { index: moveIndex(source, target, place) });
+}
+
+// Folders nest, so a drag event over an inner folder bubbles up through its
+// ancestors. The innermost target that accepts the event claims it, and the
+// ancestors stand down instead of also showing (or performing) a drop.
+const claimed = new WeakSet<Event>();
+export const claim = (e: DragEvent) => claimed.add(e.nativeEvent);
+export const isClaimed = (e: DragEvent) => claimed.has(e.nativeEvent);
 
 // Wiring for an element that can be picked up and dragged. `dragging` drives
 // the dimmed "being dragged" styling.
@@ -35,8 +44,8 @@ export function useDragSource(unit: DragUnit) {
 }
 
 // Wiring for a bookmark as a reorder-only drop target. Bookmarks are never
-// "move into" targets; folder headers handle that themselves (Folder.tsx).
-export function useReorderTarget(unit: DragUnit, siblings: DragUnit[]) {
+// "move into" targets; folders handle that themselves (Folder.tsx).
+export function useReorderTarget(unit: DragUnit) {
   const { dragged } = useDashboard();
   const [over, setOver] = useState(false);
 
@@ -45,6 +54,7 @@ export function useReorderTarget(unit: DragUnit, siblings: DragUnit[]) {
     targetProps: {
       onDragOver: (e: DragEvent) => {
         if (!canDropOnto(dragged.current, unit)) return;
+        claim(e);
         e.preventDefault();
         e.dataTransfer.dropEffect = "move";
         setOver(true);
@@ -54,8 +64,9 @@ export function useReorderTarget(unit: DragUnit, siblings: DragUnit[]) {
         setOver(false);
         const source = dragged.current;
         if (!source || !canDropOnto(source, unit)) return;
+        claim(e);
         e.preventDefault();
-        applyReorder(siblings, source.id, unit.id);
+        applyReorder(source, unit);
       },
     },
   };

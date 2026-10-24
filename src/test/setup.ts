@@ -18,3 +18,11 @@ if (!HTMLElement.prototype.showPopover) {
     toggle(this, false);
   };
 }
+
+// jsdom has no DragEvent either, so drag events would lose their pointer
+// position (clientY), which folder drops depend on.
+if (typeof DragEvent === "undefined") {
+  globalThis.DragEvent = class DragEvent extends MouseEvent {
+    readonly dataTransfer: DataTransfer | null = null;
+  } as typeof globalThis.DragEvent;
+}
