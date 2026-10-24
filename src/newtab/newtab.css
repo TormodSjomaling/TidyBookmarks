@@ -669,3 +669,33 @@ main#app > div > .archived-summary {
   border-color: #c9423d;
   color: #fff;
 }
+
+/* Layouts (data-layout on <html>). Both let tiles stretch to fill each row of
+   a grid instead of a fixed width. "columns" also flows the top-level folder
+   cards into up to three columns, so wide screens fill up. */
+:root[data-layout] main#app .bookmark-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--tile-min), 1fr));
+}
+
+:root[data-layout] main#app .bookmark-item {
+  width: auto;
+}
+
+:root[data-layout="rows"] {
+  --tile-min: 200px;
+}
+
+:root[data-layout="columns"] {
+  --tile-min: 160px;
+}
+
+:root[data-layout="columns"] main#app {
+  columns: 3 360px;
+  column-gap: var(--section-gap);
+}
+
+:root[data-layout="columns"] .folder--top,
+:root[data-layout="columns"] main#app > div > .archived-summary {
+  break-inside: avoid;
+}

@@ -63,6 +63,26 @@ export const sampleRoots: BookmarkNode[] = [
         ]),
       ]),
       folder("Old side project", [bookmark("Project board", "https://board.example.com/side-project")]),
+      folder("News", [
+        bookmark("The Guardian", "https://www.theguardian.com/"),
+        bookmark("BBC News", "https://www.bbc.co.uk/news"),
+        bookmark("Reuters", "https://www.reuters.com/"),
+        bookmark("The Verge", "https://www.theverge.com/"),
+        bookmark("Ars Technica", "https://arstechnica.com/"),
+        bookmark("NRK", "https://www.nrk.no/"),
+        bookmark("Aftenposten", "https://www.aftenposten.no/"),
+        bookmark("Weather", "https://www.yr.no/"),
+        bookmark("Podcasts", "https://podcasts.example.com/"),
+      ]),
+      folder("Learning", [
+        bookmark("MDN", "https://developer.mozilla.org/"),
+        bookmark("React docs", "https://react.dev/"),
+        bookmark("TypeScript handbook", "https://www.typescriptlang.org/docs/"),
+        folder("Courses", [
+          bookmark("Frontend Masters", "https://frontendmasters.com/"),
+          bookmark("Egghead", "https://egghead.io/"),
+        ]),
+      ]),
     ],
   },
   {
@@ -77,6 +97,15 @@ export const sampleRoots: BookmarkNode[] = [
           bookmark("Overreacted", "https://overreacted.io/"),
           bookmark("Julia Evans", "https://jvns.ca/"),
         ]),
+      ]),
+      folder("Shopping", [
+        bookmark("Finn", "https://www.finn.no/"),
+        bookmark("Prisjakt", "https://www.prisjakt.no/"),
+        bookmark("IKEA", "https://www.ikea.com/"),
+      ]),
+      folder("Home", [
+        bookmark("Electricity", "https://power.example.com/"),
+        bookmark("Insurance", "https://insurance.example.com/"),
       ]),
     ],
   },
