@@ -14,7 +14,7 @@
 - [ ] The Store requires a **public URL** for your privacy policy, not just a file in the repo. Host `PRIVACY.md` somewhere public — a GitHub Pages page, a gist, or a simple static page — and note the URL for the listing form.
 
 ### 3. Package the extension
-- [x] Automated — see [Releasing updates](#releasing-updates) below. `npm run build` copies only the runtime files (`manifest.json`, `src/`, `icons/*.png`) into `dist/`, and `npm run package` zips that into `tidy-bookmarks-<version>.zip`.
+- [x] Automated — see [Releasing updates](#releasing-updates) below. `npm run build` bundles the extension (with `manifest.json` and `icons/*.png`) into `dist/`, and `npm run package` zips that into `tidy-bookmarks-<version>.zip`.
 
 ### 4. Store listing assets
 - [ ] **Short description** (≤132 characters) — e.g. "A tidy new-tab bookmark dashboard that archives old client folders out of the way."
@@ -51,7 +51,7 @@ git push --follow-tags
 ```
 The workflow then:
 1. Checks that the tag matches `package.json`'s version (and fails if it doesn't).
-2. Runs `npm run build` + `npm run package`. The version in `package.json` is written into the bundled `manifest.json`.
+2. Runs `npm test`, then `npm run build` + `npm run package`. The version in `package.json` is written into the bundled `manifest.json`.
 3. Uploads the zip to the Chrome Web Store and submits it for review and publishing.
 4. Creates a GitHub Release with the zip attached and notes generated from the commits.
 

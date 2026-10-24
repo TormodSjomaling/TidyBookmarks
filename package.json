@@ -5,14 +5,33 @@
   "type": "module",
   "description": "A tidy new-tab bookmark dashboard that keeps nested folders organized and archives old clients out of the way.",
   "scripts": {
-    "build": "node scripts/build.mjs",
+    "dev": "vite build --watch --mode development",
+    "build": "tsc && vite build",
+    "typecheck": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "package": "node scripts/package.mjs"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "devDependencies": {
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
+    "@types/chrome": "^0.3.6",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
     "adm-zip": "^0.6.1",
-    "chrome-webstore-upload-cli": "^4.0.2"
+    "chrome-webstore-upload-cli": "^4.0.2",
+    "jsdom": "^30.1.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  },
+  "dependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   }
 }

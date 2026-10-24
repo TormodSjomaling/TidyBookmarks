@@ -25,14 +25,20 @@ It reads and writes your real Chrome bookmarks (`chrome://bookmarks`) — nothin
 - **Inline rename** — hover any bookmark or folder and click the pencil icon to rename it in place.
 - **Dark, light, or system theme** and an optional **compact density** mode, both in Options.
 
-## Installing (development mode)
+## Installing
 
-This extension isn't yet published to the Chrome Web Store. To use it today:
+Install it from the [Chrome Web Store](https://chromewebstore.google.com/detail/fdcjafdcbdlcdicofiolhfgclifbijoo), then open a new tab.
 
-1. Open `chrome://extensions` in Chrome.
-2. Turn on **Developer mode** (top right).
-3. Click **Load unpacked** and select this folder.
-4. Open a new tab.
+### Development
+
+Requires Node 24 (see `.nvmrc`).
+
+1. `npm install`, then `npm run dev`. This builds into `dist/` and rebuilds whenever you save.
+2. Open `chrome://extensions` in Chrome and turn on **Developer mode** (top right).
+3. Click **Load unpacked** and select the **`dist/`** folder (not the project folder).
+4. Open a new tab. After a rebuild, click the reload icon on the extension's card.
+
+`npm test` runs the test suite; `npm run build` makes a production build.
 
 ## Using it
 
