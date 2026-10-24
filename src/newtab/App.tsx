@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { DragUnit } from "../lib/dnd";
 import { buildParentMap, isFolder, normalizeQuery, visibleChildren } from "../lib/tree";
 import type { BookmarkNode } from "../lib/types";
+import { GearIcon, SearchIcon } from "../shared/icons";
 import { useSettings } from "../shared/settings";
 import { Bookmark } from "./Bookmark";
 import { DashboardContext, type Dashboard } from "./dashboard";
@@ -26,6 +27,15 @@ export function App() {
   }, [searchText]);
 
   const parents = useMemo(() => buildParentMap(roots ?? []), [roots]);
+
+  // Marks the page as rendered, which turns on transitions that shouldn't play
+  // while it first appears (see [data-ready] in newtab.css).
+  const loaded = roots !== null && folderMeta !== null && settings !== null;
+  useEffect(() => {
+    if (!loaded) return;
+    const frame = requestAnimationFrame(() => document.documentElement.setAttribute("data-ready", ""));
+    return () => cancelAnimationFrame(frame);
+  }, [loaded]);
 
   if (!roots || !folderMeta || !settings) return null;
 
@@ -52,23 +62,26 @@ export function App() {
           ))}
         </div>
         <div id="header-right">
-          <input
-            id="search-input"
-            type="text"
-            placeholder="Search bookmarks…"
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                e.preventDefault();
-                setSearchText("");
-                setQuery("");
-                e.currentTarget.blur();
-              }
-            }}
-          />
+          <label id="search-box">
+            <SearchIcon size={15} />
+            <input
+              id="search-input"
+              type="text"
+              placeholder="Search bookmarks…"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  setSearchText("");
+                  setQuery("");
+                  e.currentTarget.blur();
+                }
+              }}
+            />
+          </label>
           <button id="options-btn" type="button" title="Options" onClick={() => chrome.runtime.openOptionsPage()}>
-            ⚙
+            <GearIcon size={18} />
           </button>
         </div>
       </header>
@@ -80,7 +93,7 @@ export function App() {
             .filter((section) => section.folders.length > 0)
             .map((section) => (
               <div key={section.root.id}>
-                <FolderList folders={section.folders} parentId={section.root.id} />
+                <FolderList folders={section.folders} parentId={section.root.id} depth={0} />
               </div>
             ))
         )}

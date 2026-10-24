@@ -1,4 +1,5 @@
 import type { Theme } from "../lib/types";
+import { ArrowLeftIcon } from "../shared/icons";
 import { updateSettings, useSettings } from "../shared/settings";
 
 export function Options() {
@@ -16,7 +17,7 @@ export function Options() {
             window.location.href = "../newtab/newtab.html";
           }}
         >
-          ←
+          <ArrowLeftIcon size={18} />
         </button>
         <h1>Options</h1>
       </div>

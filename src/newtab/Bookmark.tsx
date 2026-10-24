@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from "react";
 import type { BookmarkNode } from "../lib/types";
+import { PencilIcon } from "../shared/icons";
 import { BookmarkEditor } from "./BookmarkEditor";
 import { faviconUrl, useDashboard } from "./dashboard";
 import { toUnit, useDragSource, useReorderTarget } from "./drag";
@@ -72,7 +73,7 @@ export function Bookmark({ node, isDefault, containerKey }: Props) {
           setEditing(true);
         }}
       >
-        ✎
+        <PencilIcon size={compact ? 10 : 13} />
       </button>
       {editing && <BookmarkEditor id={editorId} node={node} onSaved={setPending} onClose={() => setEditing(false)} />}
     </div>

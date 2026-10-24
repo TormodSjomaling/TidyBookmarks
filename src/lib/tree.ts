@@ -97,3 +97,26 @@ export function isSelfOrDescendant(parents: ParentMap, id: string, ancestorId: s
   }
   return false;
 }
+
+// What a collapsed folder shows of its contents: how many bookmarks it holds at
+// any depth, and the first few of them, its own before its subfolders'.
+export function folderPreview(folder: BookmarkNode, limit: number): { count: number; first: BookmarkNode[] } {
+  let count = 0;
+  const first: BookmarkNode[] = [];
+  let level = [folder];
+  while (level.length > 0) {
+    const next: BookmarkNode[] = [];
+    for (const node of level) {
+      for (const child of node.children ?? []) {
+        if (isFolder(child)) {
+          next.push(child);
+        } else {
+          count++;
+          if (first.length < limit) first.push(child);
+        }
+      }
+    }
+    level = next;
+  }
+  return { count, first };
+}

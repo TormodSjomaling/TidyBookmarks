@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type DragEvent, type MouseEvent } from "react";
 import { canDropBeside, canDropInto, dragBand, type DragBand } from "../lib/dnd";
 import { toggleArchived, toggleCollapsed, unarchive } from "../lib/folderMeta";
-import { getMeta, groupFolders, isArchived, isFolder, visibleChildren } from "../lib/tree";
+import { folderPreview, getMeta, groupFolders, isArchived, isFolder, visibleChildren } from "../lib/tree";
 import type { BookmarkNode } from "../lib/types";
+import { ArchiveIcon, ChevronIcon, PencilIcon } from "../shared/icons";
 import { Bookmark } from "./Bookmark";
-import { useDashboard } from "./dashboard";
+import { faviconUrl, useDashboard } from "./dashboard";
 import { applyReorder, claim, isClaimed, toUnit, useDragSource } from "./drag";
 import { InlineEdit } from "./InlineEdit";
 
@@ -20,8 +21,9 @@ export function BookmarkGrid({ bookmarks, containerKey }: { bookmarks: BookmarkN
 }
 
 // Sibling folders under one parent: plain ones first in native order, then
-// archived ones, folded into a summary row once there are two or more.
-export function FolderList({ folders, parentId }: { folders: BookmarkNode[]; parentId: string }) {
+// archived ones, folded into a summary row once there are two or more. `depth`
+// is 0 for folders directly under a Chrome root, which render as cards.
+export function FolderList({ folders, parentId, depth }: { folders: BookmarkNode[]; parentId: string; depth: number }) {
   const { folderMeta, query } = useDashboard();
   const { individual, summarized } = groupFolders(folders, folderMeta, query);
   const containerKey = `folders:${parentId}`;
@@ -29,14 +31,14 @@ export function FolderList({ folders, parentId }: { folders: BookmarkNode[]; par
   return (
     <>
       {individual.map((folder) => (
-        <Folder key={folder.id} node={folder} containerKey={containerKey} />
+        <Folder key={folder.id} node={folder} containerKey={containerKey} depth={depth} />
       ))}
       {summarized.length > 0 && <ArchivedSummary folders={summarized} />}
     </>
   );
 }
 
-function FolderChildren({ node }: { node: BookmarkNode }) {
+function FolderChildren({ node, depth }: { node: BookmarkNode; depth: number }) {
   const { query } = useDashboard();
   const visible = visibleChildren(node.children ?? [], query);
   const bookmarks = visible.filter((child) => !isFolder(child));
@@ -45,34 +47,35 @@ function FolderChildren({ node }: { node: BookmarkNode }) {
   return (
     <>
       {bookmarks.length > 0 && <BookmarkGrid bookmarks={bookmarks} containerKey={`bookmarks:${node.id}`} />}
-      <FolderList folders={folders} parentId={node.id} />
+      <FolderList folders={folders} parentId={node.id} depth={depth + 1} />
     </>
   );
 }
 
-const ArchiveIcon = () => (
-  <svg
-    viewBox="0 0 24 24"
-    width="13"
-    height="13"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <rect x="3" y="8" width="18" height="12" rx="1" />
-    <path d="M3 8l1.5-4h15L21 8" />
-    <line x1="9.5" y1="13" x2="14.5" y2="13" />
-  </svg>
-);
+const PREVIEW_ICONS = 4;
+
+// What a collapsed folder holds, at a glance: a few of its sites' icons and
+// a count of all its bookmarks.
+function FolderPreview({ node }: { node: BookmarkNode }) {
+  const { count, first } = folderPreview(node, PREVIEW_ICONS);
+  if (count === 0) return <span className="folder-preview folder-preview--empty">Empty</span>;
+  return (
+    <span className="folder-preview" title={`${count} bookmark${count === 1 ? "" : "s"}`}>
+      {first.map((bookmark) => (
+        <img key={bookmark.id} className="favicon" src={faviconUrl(bookmark.url ?? "")} alt="" />
+      ))}
+      <span className="folder-count">{count}</span>
+    </span>
+  );
+}
 
 interface FolderProps {
   node: BookmarkNode;
   containerKey: string;
+  depth: number;
 }
 
-function Folder({ node, containerKey }: FolderProps) {
+function Folder({ node, containerKey, depth }: FolderProps) {
   const { folderMeta, updateFolderMeta, query, parents, dragged } = useDashboard();
   const meta = getMeta(folderMeta, node.id);
   // Search forces matching folders open without touching their stored state.
@@ -179,6 +182,7 @@ function Folder({ node, containerKey }: FolderProps) {
 
   const className = [
     "folder",
+    depth === 0 && "folder--top",
     collapsed && "collapsed",
     archived && "archived",
     dragging && "dragging",
@@ -192,21 +196,33 @@ function Folder({ node, containerKey }: FolderProps) {
   return (
     <div className={className} data-folder-id={node.id} data-parent-id={node.parentId} {...dropProps}>
       <div className="folder-header" ref={headerRef} {...headerProps}>
-        <span className="chevron">▼</span>
         {renaming ? (
-          <InlineEdit
-            className="folder-edit-input"
-            initialValue={title}
-            onCommit={commitRename}
-            onCancel={() => setRenaming(false)}
-          />
+          <>
+            <span className="chevron">
+              <ChevronIcon />
+            </span>
+            <InlineEdit
+              className="folder-edit-input"
+              initialValue={title}
+              onCommit={commitRename}
+              onCancel={() => setRenaming(false)}
+            />
+          </>
         ) : (
-          <span className="folder-name">{title || "(untitled)"}</span>
+          // A real button, so the folder can be opened and closed from the
+          // keyboard. Its click bubbles up to the header's handler.
+          <button type="button" className="folder-toggle" aria-expanded={!collapsed}>
+            <span className="chevron">
+              <ChevronIcon />
+            </span>
+            <span className="folder-name">{title || "(untitled)"}</span>
+          </button>
         )}
         {archived && <span className="folder-badge">Archived</span>}
+        {collapsed && !archived && !renaming && <FolderPreview node={node} />}
         <span className="folder-actions">
           <button type="button" title="Rename" onClick={() => setRenaming(true)}>
-            ✎
+            <PencilIcon size={15} />
           </button>
           <button
             type="button"
@@ -214,12 +230,12 @@ function Folder({ node, containerKey }: FolderProps) {
             className={meta.archived ? "is-archived" : undefined}
             onClick={() => updateFolderMeta((current) => toggleArchived(current, node.id, Date.now()))}
           >
-            <ArchiveIcon />
+            <ArchiveIcon size={15} />
           </button>
         </span>
       </div>
       <div className="folder-children">
-        <FolderChildren node={node} />
+        <FolderChildren node={node} depth={depth} />
       </div>
     </div>
   );
@@ -234,7 +250,9 @@ function ArchivedSummary({ folders }: { folders: BookmarkNode[] }) {
   return (
     <div className={expanded ? "archived-summary expanded" : "archived-summary"}>
       <div className="archived-summary-header" onClick={() => setExpanded(!expanded)}>
-        <span className="chevron">▼</span>
+        <span className="chevron">
+          <ChevronIcon size={14} />
+        </span>
         <span className="archived-summary-label">{folders.length} archived</span>
       </div>
       <div className="archived-chip-list">

@@ -23,12 +23,12 @@ Tests run against a fake `chrome` API (`src/dev/fakeChrome.ts`, shared with the 
 
 - `src/lib/` — pure, Chrome-free logic with unit tests next to it. **The domain rules live here**; components only call into them.
   - `types.ts` — `BookmarkNode`, `FolderMeta`/`FolderMetaMap`, `Settings`.
-  - `tree.ts` — `isArchived`, search (`nodeMatchesQuery`, `visibleChildren`), sibling ordering/grouping (`orderFolders`, `groupFolders`), parent lookup (`buildParentMap`, `isSelfOrDescendant`).
+  - `tree.ts` — `isArchived`, search (`nodeMatchesQuery`, `visibleChildren`), sibling ordering/grouping (`orderFolders`, `groupFolders`), parent lookup (`buildParentMap`, `isSelfOrDescendant`), and `folderPreview` (the count and icons a collapsed folder shows).
   - `folderMeta.ts` — state transitions: `toggleCollapsed`, `toggleArchived`, `unarchive`. Each returns a new map.
   - `dnd.ts` — drop guards (`canDropOnto`, `canDropInto`), `dragBand`, `moveIndex`.
 - `src/newtab/` — the new-tab page. `App.tsx` (header, search, root sections), `Folder.tsx` (`FolderList`, `Folder`, `ArchivedSummary`, `BookmarkGrid`), `Bookmark.tsx`, `BookmarkEditor.tsx` (edit/delete popover), `InlineEdit.tsx` (folder rename), `hooks.ts` (Chrome data hooks), `drag.ts` (drag-and-drop hooks), `dashboard.ts` (shared context).
 - `src/options/` — the Options page (`Options.tsx`), a full tab (`options_ui.open_in_tab: true`) opened from the ⚙ button via `chrome.runtime.openOptionsPage()`.
-- `src/shared/` — used by both pages: `theme.css` and `settings.ts`.
+- `src/shared/` — used by both pages: `theme.css`, `settings.ts` and `icons.tsx` (the line icons; use these rather than text glyphs).
 - `vite.config.ts` — two HTML entries; HTML keeps its source path in `dist/` (`dist/src/newtab/newtab.html`) so `manifest.json`'s paths stay valid. A small plugin emits `manifest.json` (version stamped) and `icons/*.png`.
 - No background service worker — nothing here needs to run outside the two pages.
 
@@ -85,8 +85,13 @@ jsdom has no Popover API; `src/test/setup.ts` fills in `showPopover`/`hidePopove
 ### Folder grouping/sorting (`orderFolders`, `groupFolders`)
 Within any set of sibling folders: non-archived folders render first in native order; archived folders sort to the end, most recently archived first. Two or more archived siblings fold into one `.archived-summary` row with a chip per folder (clicking a chip runs `unarchive`); a single archived sibling renders as its own compact row. This runs independently at every folder level.
 
+### Visual structure
+`FolderList`/`Folder` carry a `depth`: depth-0 folders (directly under a Chrome root) render as `.folder--top` cards on `--surface`; deeper folders are headings with a guide line down their contents. Bookmark tiles sit on `--tile`. A collapsed, non-archived folder shows `FolderPreview` (a few favicons and a bookmark count). The folder name is a `.folder-toggle` button so folders open from the keyboard; its click bubbles to the header's toggle handler.
+
+Motion is kept small: tiles lift on hover, and an opening folder's contents fade in via `@starting-style`, scoped to `html[data-ready]` (set by `App` a frame after first render) so a new tab doesn't fade in as a whole. `theme.css` turns transitions off under `prefers-reduced-motion`.
+
 ### Shared theme/density (`src/shared/`)
-`theme.css` defines the CSS custom properties both pages use (`--bg`, `--text`, `--accent`, spacing vars `--card-padding`/`--row-gap`/`--folder-header-padding`/`--folder-indent`) in three layers: a `:root` dark default, a `prefers-color-scheme: light` override (used for `theme: "system"`, which sets no attribute, so it follows the OS live), and `:root[data-theme="dark"|"light"]` overrides that win regardless of OS. `:root[data-density="compact"]` overrides the spacing vars. `useSettings()` (`settings.ts`) loads settings, follows `storage.onChanged`, and calls `applySettings` to set those attributes on `<html>`, so a change in Options shows on an already-open new tab immediately. Each page imports `theme.css` before its own stylesheet.
+`theme.css` defines the CSS custom properties both pages use (colors `--bg`/`--surface`/`--tile`/`--bg-raised`/`--text`/`--accent`, shadows, spacing vars `--card-padding`/`--row-gap`/`--section-gap`/`--folder-header-padding`/`--folder-indent`) in three layers: a `:root` dark default, a `prefers-color-scheme: light` override (used for `theme: "system"`, which sets no attribute, so it follows the OS live), and `:root[data-theme="dark"|"light"]` overrides that win regardless of OS. `:root[data-density="compact"]` overrides the spacing vars. `useSettings()` (`settings.ts`) loads settings, follows `storage.onChanged`, and calls `applySettings` to set those attributes on `<html>`, so a change in Options shows on an already-open new tab immediately. Each page imports `theme.css` before its own stylesheet.
 
 Page CSS (`newtab.css`, `options.css`) is plain global CSS keyed on the class names and ids the components render. Keep those names in sync when changing markup.
 

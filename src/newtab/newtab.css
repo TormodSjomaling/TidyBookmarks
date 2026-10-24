@@ -11,12 +11,21 @@ body {
   min-height: 100vh;
 }
 
+button {
+  font-family: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 #page-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.4rem 0.6rem 0;
+  padding: 0.6rem 1rem 0.2rem;
 }
 
 #default-bookmarks {
@@ -28,39 +37,54 @@ body {
 #header-right {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
   flex: none;
 }
 
-#search-input {
-  background: var(--bg-raised);
+#search-box {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: 230px;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  background: var(--tile);
   border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  color: var(--text-dim);
+  cursor: text;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+#search-box:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+#search-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  padding: 0;
   color: var(--text);
-  border-radius: 6px;
-  padding: 0.3rem 0.6rem;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-family: inherit;
-  width: 180px;
 }
 
 #search-input::placeholder {
   color: var(--text-dim);
 }
 
-#search-input:focus {
-  outline: none;
-  border-color: var(--accent);
-}
-
 #options-btn {
+  display: inline-flex;
   background: none;
   border: none;
   color: var(--text-dim);
   cursor: pointer;
-  font-size: 1.2rem;
-  line-height: 1;
-  padding: 0.3rem 0.5rem;
-  border-radius: 6px;
+  padding: 0.4rem;
+  border-radius: 8px;
 }
 
 #options-btn:hover {
@@ -69,13 +93,38 @@ body {
 }
 
 main#app {
-  padding: 0.1rem 0.6rem 2rem;
+  padding: 0.6rem 1rem 3rem;
   margin: 0;
 }
 
+/* Folders. A top-level folder (directly under a Chrome root) is a card; the
+   folders inside it are headings, with a faint guide line down their contents
+   so the depth reads at a glance. */
 .folder {
   position: relative;
-  border-radius: 6px;
+  border-radius: 8px;
+  /* Where drop lines sit, from the folder's edge: centred in the space between
+     folders. */
+  --drop-offset: -2px;
+}
+
+.folder--top:not(.archived) {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  padding: 0.3rem 0.4rem 0.15rem;
+  margin-bottom: var(--section-gap);
+  --drop-offset: calc(-1px - var(--section-gap) / 2 - 1.5px);
+}
+
+/* Archived rows between the cards. */
+.folder--top.archived,
+main#app > div > .archived-summary {
+  margin-bottom: 0.4rem;
+}
+
+.folder--top.collapsed:not(.archived) {
+  padding-bottom: 0.3rem;
 }
 
 .folder-header {
@@ -86,24 +135,46 @@ main#app {
   border-radius: 8px;
   cursor: pointer;
   user-select: none;
-  font-size: 1.05rem;
+  font-size: 0.98rem;
   line-height: 1.5;
+  min-height: 2.1rem;
+}
+
+.folder--top > .folder-header {
+  font-size: 1.08rem;
 }
 
 .folder-header:hover {
   background: var(--bg-raised);
 }
 
-.folder-header:hover .folder-actions {
+.folder-header:hover .folder-actions,
+.folder-header:focus-within .folder-actions {
   visibility: visible;
+}
+
+.folder-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .folder.dragging > .folder-header {
   opacity: 0.4;
 }
 
-/* Where a dragged sibling folder will land: a line above the folder, or below
-   all of its contents. */
+/* Where a dragged folder will land: a line above the folder, or below all of
+   its contents. */
 .folder.drop-before::before,
 .folder.drop-after::after {
   content: "";
@@ -117,11 +188,11 @@ main#app {
 }
 
 .folder.drop-before::before {
-  top: -2px;
+  top: var(--drop-offset);
 }
 
 .folder.drop-after::after {
-  bottom: -2px;
+  bottom: var(--drop-offset);
 }
 
 .folder.drag-over-into > .folder-header {
@@ -131,11 +202,9 @@ main#app {
 }
 
 .chevron {
-  display: inline-block;
-  width: 0.9rem;
-  font-size: 1.1rem;
+  display: inline-flex;
   color: var(--text-dim);
-  transition: transform 0.1s ease;
+  transition: transform 0.15s ease;
   flex: none;
 }
 
@@ -145,32 +214,67 @@ main#app {
 
 .folder-name {
   font-weight: 500;
-  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.folder--top > .folder-header .folder-name {
+  font-weight: 600;
+}
+
 .folder-edit-input {
   flex: 1 1 auto;
   min-width: 0;
-  background: var(--bg);
+  background: var(--tile);
   border: 1px solid var(--accent);
   border-radius: 6px;
   color: var(--text);
   padding: 0.15rem 0.5rem;
-  font-size: 1.05rem;
+  font-size: inherit;
   font-family: inherit;
 }
 
 .folder-badge {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: var(--text-dim);
   border: 1px solid var(--border);
   border-radius: 5px;
-  padding: 0.1rem 0.45rem;
+  padding: 0.05rem 0.4rem;
   flex: none;
+}
+
+/* A collapsed folder's contents at a glance: a few site icons and a count. */
+.folder-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex: none;
+  min-width: 0;
+}
+
+.folder-preview .favicon {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  opacity: 0.85;
+}
+
+.folder-count {
+  margin-left: 0.15rem;
+  padding: 0 0.45rem;
+  border-radius: 999px;
+  background: var(--bg-raised);
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.folder-preview--empty {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  font-style: italic;
 }
 
 .folder.archived {
@@ -183,41 +287,32 @@ main#app {
   min-height: 0;
 }
 
-.folder.archived > .folder-header .chevron {
-  font-size: 0.9rem;
-}
-
 .folder.archived > .folder-header .folder-badge {
-  font-size: 0.7rem;
-  padding: 0.05rem 0.35rem;
+  font-size: 0.68rem;
+  padding: 0 0.35rem;
 }
 
 .folder-actions {
   visibility: hidden;
   display: flex;
-  gap: 0.25rem;
+  gap: 0.15rem;
+  margin-left: auto;
   flex: none;
 }
 
 .folder-actions button {
+  display: inline-flex;
+  align-items: center;
   background: none;
   border: none;
   color: var(--text-dim);
   cursor: pointer;
-  font-size: 1.15rem;
-  line-height: 1;
-  padding: 0.3rem 0.45rem;
-  border-radius: 5px;
-  display: inline-flex;
-  align-items: center;
-}
-
-.folder-actions button svg {
-  display: block;
+  padding: 0.3rem;
+  border-radius: 6px;
 }
 
 .folder-actions button:hover {
-  background: var(--bg-raised);
+  background: var(--border);
   color: var(--text);
 }
 
@@ -227,11 +322,29 @@ main#app {
 
 .folder-children {
   margin-left: var(--folder-indent);
-  padding-left: 0.3rem;
+  padding-left: 0.35rem;
+}
+
+.folder:not(.folder--top) > .folder-children {
+  border-left: 1px solid var(--border);
+  padding-left: 0.6rem;
 }
 
 .folder.collapsed > .folder-children {
   display: none;
+}
+
+/* Opening a folder fades its contents in. Scoped to [data-ready] (set once the
+   page has rendered) so opening a new tab doesn't fade in the whole page. */
+[data-ready] .folder-children {
+  transition: opacity 0.18s ease, translate 0.18s ease;
+}
+
+@starting-style {
+  [data-ready] .folder:not(.collapsed) > .folder-children {
+    opacity: 0;
+    translate: 0 -4px;
+  }
 }
 
 .archived-summary-header {
@@ -252,7 +365,6 @@ main#app {
 
 .archived-summary-header .chevron {
   transform: rotate(-90deg);
-  font-size: 0.9rem;
 }
 
 .archived-summary.expanded .archived-summary-header .chevron {
@@ -271,7 +383,7 @@ main#app {
 }
 
 .archived-chip {
-  background: var(--bg-raised);
+  background: var(--tile);
   border: 1px solid var(--border);
   color: var(--text-dim);
   border-radius: 14px;
@@ -285,13 +397,14 @@ main#app {
   border-color: var(--accent);
 }
 
+/* Bookmark tiles. */
 .bookmark-grid {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-start;
   --tile-gap: var(--row-gap);
   gap: var(--tile-gap);
-  margin: 0.5rem 0 1rem;
+  margin: 0.4rem 0 0.9rem;
 }
 
 .bookmark-item {
@@ -300,20 +413,30 @@ main#app {
   align-items: center;
   padding: var(--card-padding);
   border-radius: 10px;
-  background: var(--bg-raised);
+  background: var(--tile);
   border: 1px solid var(--border);
+  box-shadow: var(--shadow);
   width: 220px;
   flex: 0 0 220px;
   min-width: 0;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
 }
 
 .bookmark-item:hover {
-  border-color: var(--accent);
-  background: var(--bg-raised);
+  border-color: color-mix(in srgb, var(--accent) 65%, var(--border));
+  box-shadow: var(--shadow-lifted);
+  transform: translateY(-1px);
+}
+
+.bookmark-item:has(.bookmark-link:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .bookmark-item.dragging {
   opacity: 0.4;
+  transform: none;
+  box-shadow: none;
 }
 
 /* Where a dragged bookmark will land: a vertical line centred in the gap
@@ -348,6 +471,10 @@ main#app {
   text-decoration: none;
 }
 
+.bookmark-link:focus-visible {
+  outline: none;
+}
+
 .bookmark-item .favicon {
   width: 22px;
   height: 22px;
@@ -366,15 +493,14 @@ main#app {
 
 .bookmark-edit-btn {
   position: absolute;
-  top: 3px;
-  right: 3px;
-  background: rgba(0, 0, 0, 0.55);
-  border: none;
+  top: 4px;
+  right: 4px;
+  display: inline-flex;
+  background: var(--tile);
+  border: 1px solid var(--border);
   color: var(--text-dim);
-  font-size: 0.75rem;
-  line-height: 1;
-  padding: 0.2rem 0.35rem;
-  border-radius: 5px;
+  padding: 0.25rem;
+  border-radius: 6px;
   cursor: pointer;
   visibility: hidden;
 }
@@ -387,11 +513,12 @@ main#app {
 
 .bookmark-edit-btn:hover {
   color: var(--text);
-  background: rgba(0, 0, 0, 0.8);
+  border-color: var(--accent);
 }
 
 .default-grid {
   --tile-gap: 0.5rem;
+  margin: 0;
 }
 
 .bookmark-item.bookmark-item--compact {
@@ -411,13 +538,10 @@ main#app {
    after a short hover. A hidden button can't be clicked, so a quick click
    always lands on the bookmark itself. */
 .bookmark-item--compact .bookmark-edit-btn {
-  top: -9px;
-  right: -9px;
-  padding: 0.1rem 0.2rem;
-  font-size: 0.6rem;
+  top: -8px;
+  right: -8px;
+  padding: 0.15rem;
   border-radius: 999px;
-  background: var(--bg-raised);
-  border: 1px solid var(--border);
   /* Hide immediately when the pointer leaves... */
   transition: visibility 0s;
 }
@@ -425,11 +549,6 @@ main#app {
 .bookmark-item--compact:hover .bookmark-edit-btn {
   /* ...but only show after resting on the tile for a moment. */
   transition-delay: 0.4s;
-}
-
-.bookmark-item--compact .bookmark-edit-btn:hover {
-  background: var(--bg);
-  border-color: var(--accent);
 }
 
 .empty-state {
@@ -453,12 +572,12 @@ main#app {
   position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
   width: 320px;
   padding: 0.9rem;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid var(--border);
-  background: var(--bg-raised);
+  background: var(--surface);
   color: var(--text);
   font-size: 0.9rem;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.3);
 }
 
 .bookmark-editor form {
@@ -473,7 +592,7 @@ main#app {
 }
 
 .bookmark-editor input {
-  background: var(--bg);
+  background: var(--tile);
   border: 1px solid var(--border);
   border-radius: 6px;
   color: var(--text);

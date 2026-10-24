@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildParentMap,
+  folderPreview,
   groupFolders,
   isArchived,
   isSelfOrDescendant,
@@ -117,5 +118,22 @@ describe("parent map", () => {
     expect(isSelfOrDescendant(parents, "c", "a")).toBe(true);
     expect(isSelfOrDescendant(parents, "b", "b")).toBe(true);
     expect(isSelfOrDescendant(parents, "a", "b")).toBe(false);
+  });
+});
+
+describe("folderPreview", () => {
+  const tree = folder("f", "F", [
+    folder("sub", "Sub", [bookmark("deep", "Deep"), bookmark("deep2", "Deep 2")]),
+    bookmark("a", "A"),
+    bookmark("b", "B"),
+  ]);
+
+  it("counts bookmarks at any depth", () => {
+    expect(folderPreview(tree, 10).count).toBe(4);
+    expect(folderPreview(folder("e", "Empty"), 3)).toEqual({ count: 0, first: [] });
+  });
+
+  it("previews the folder's own bookmarks before its subfolders'", () => {
+    expect(ids(folderPreview(tree, 3).first)).toEqual(["a", "b", "deep"]);
   });
 });
