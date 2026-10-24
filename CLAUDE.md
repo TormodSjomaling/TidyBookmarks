@@ -26,7 +26,8 @@ Tests run against a fake `chrome` API (`src/dev/fakeChrome.ts`, shared with the 
   - `tree.ts` — `isArchived`, search (`nodeMatchesQuery`, `visibleChildren`), sibling ordering/grouping (`orderFolders`, `groupFolders`), parent lookup (`buildParentMap`, `isSelfOrDescendant`), and `folderPreview` (the count and icons a collapsed folder shows).
   - `folderMeta.ts` — state transitions: `toggleCollapsed`, `toggleArchived`, `unarchive`. Each returns a new map.
   - `dnd.ts` — drop guards (`canDropOnto`, `canDropInto`), `dragBand`, `moveIndex`.
-- `src/newtab/` — the new-tab page. `App.tsx` (header, search, root sections), `Folder.tsx` (`FolderList`, `Folder`, `ArchivedSummary`, `BookmarkGrid`), `Bookmark.tsx`, `BookmarkEditor.tsx` (edit/delete popover), `InlineEdit.tsx` (folder rename), `hooks.ts` (Chrome data hooks), `drag.ts` (drag-and-drop hooks), `glide.ts` (the after-drop animation), `dashboard.ts` (shared context).
+  - `links.ts` — `normalizeUrl` (address-bar-style URL input), `siteTitle` (default bookmark name), `droppedLink` (reads a link dropped from outside the page).
+- `src/newtab/` — the new-tab page. `App.tsx` (header, search, root sections), `Folder.tsx` (`FolderList`, `Folder`, `ArchivedSummary`, `BookmarkGrid`), `Bookmark.tsx`, `BookmarkEditor.tsx` (edit/delete popover), `AddPopover.tsx` (add a bookmark or folder), `InlineEdit.tsx` (folder rename), `hooks.ts` (Chrome data hooks), `drag.ts` (drag-and-drop hooks), `glide.ts` (the after-drop animation), `dashboard.ts` (shared context).
 - `src/options/` — the Options page (`Options.tsx`), a full tab (`options_ui.open_in_tab: true`) opened from the ⚙ button via `chrome.runtime.openOptionsPage()`.
 - `src/shared/` — used by both pages: `theme.css`, `settings.ts` and `icons.tsx` (the line icons; use these rather than text glyphs).
 - `vite.config.ts` — two HTML entries; HTML keeps its source path in `dist/` (`dist/src/newtab/newtab.html`) so `manifest.json`'s paths stay valid. A small plugin emits `manifest.json` (version stamped) and `icons/*.png`.
@@ -81,6 +82,11 @@ Components are keyed by bookmark id, so a tree re-read or state change only patc
 The ✎ button on a bookmark opens a native popover (`popover="auto"`) for name, URL and delete, so Escape and clicking outside close it for free. It is portalled into `<body>`, so the tile's `draggable` doesn't hijack text selection in its inputs, and CSS anchor positioning places it under the tile carrying `.bookmark-item--editing` (`anchor-name`), flipping at viewport edges. While open, ✎ becomes the popover's native invoker (`popoverTarget`), so clicking it again closes it instead of light-dismissing and reopening. The opening click calls `preventDefault()`, because React re-renders mid-click and the newly added `popoverTarget` would otherwise immediately hide the popover. `normalizeUrl` adds `https://` to bare domains (as the address bar does) and rejects unparseable input before calling `chrome.bookmarks.update`. Delete is a two-step confirm, then `chrome.bookmarks.remove` (removes it from Chrome, not just the page).
 
 Folders still rename inline with `InlineEdit`.
+
+### Adding bookmarks and folders (`AddPopover.tsx`)
+The folder header's **+** and the **New folder** button under the top-level folders open `AddPopover`, built like `BookmarkEditor` (native popover, portalled, same invoker trick). Its anchor carries `.popover-anchor`; on folders it lines up with the header's right end (`alignEnd`). `chrome.bookmarks.create` appends at the end of the parent; a bookmark left unnamed gets `siteTitle(url)`. New top-level folders go to the bookmarks bar (`roots[0]`). Adding to a collapsed folder opens it. Like the tile editor, the popover renders outside the header so its clicks don't reach the header's collapse handler through React's portal bubbling.
+
+A link dragged in from outside the page has no `dragged` unit; folders accept it as "into" when `dataTransfer.types` includes `text/uri-list` (`carriesLink`), with `dropEffect = "copy"` (external link drags don't allow "move"). On drop, `createFromDrop` reads `text/uri-list` and the anchor text from `text/html`.
 
 jsdom has no Popover API; `src/test/setup.ts` fills in `showPopover`/`hidePopover` for tests.
 

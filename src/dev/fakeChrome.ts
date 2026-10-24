@@ -29,6 +29,7 @@ export function installFakeChrome(roots: BookmarkNode[], initialStorage: Record<
   const store: Record<string, unknown> = structuredClone(initialStorage);
   const storageChanged = fakeEvent();
   const opened: { url: string; newTab: boolean }[] = [];
+  let created = 0;
   const bookmarkEvents = {
     onCreated: fakeEvent(),
     onRemoved: fakeEvent(),
@@ -99,6 +100,13 @@ export function installFakeChrome(roots: BookmarkNode[], initialStorage: Record<
     bookmarks: {
       ...bookmarkEvents,
       getTree: async () => [withIndexes(structuredClone(tree))],
+      create: async ({ parentId, title, url }: { parentId: string; title?: string; url?: string }) => {
+        const parent = find(parentId)!;
+        const node: BookmarkNode = { id: `new${++created}`, parentId, title: title ?? "", ...(url ? { url } : { children: [] }) };
+        parent.children!.push(node);
+        bookmarkEvents.onCreated.fire(node.id, structuredClone(node));
+        return structuredClone(node);
+      },
       update: async (id: string, changes: { title?: string; url?: string }) => {
         const node = find(id)!;
         if (changes.url !== undefined) {

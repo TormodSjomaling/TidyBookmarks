@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState, type DragEvent, type MouseEvent } from "react";
+import { useEffect, useId, useRef, useState, type DragEvent, type MouseEvent } from "react";
 import { canDropBeside, canDropInto, dragBand, type DragBand } from "../lib/dnd";
 import { toggleArchived, toggleCollapsed, unarchive } from "../lib/folderMeta";
 import { folderPreview, getMeta, groupFolders, isArchived, isFolder, visibleChildren } from "../lib/tree";
 import type { BookmarkNode } from "../lib/types";
-import { ArchiveIcon, ChevronIcon, PencilIcon } from "../shared/icons";
+import { ArchiveIcon, ChevronIcon, PencilIcon, PlusIcon } from "../shared/icons";
+import { AddPopover } from "./AddPopover";
 import { Bookmark } from "./Bookmark";
 import { faviconUrl, useDashboard } from "./dashboard";
-import { applyReorder, claim, isClaimed, toUnit, useDragSource } from "./drag";
+import { applyReorder, carriesLink, claim, createFromDrop, isClaimed, toUnit, useDragSource } from "./drag";
 import { captureLayout } from "./glide";
 import { Highlight } from "./Highlight";
 import { InlineEdit } from "./InlineEdit";
@@ -85,6 +86,8 @@ function Folder({ node, containerKey, depth }: FolderProps) {
   const archived = isArchived(meta, query);
 
   const [renaming, setRenaming] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const addPopoverId = useId();
   const [pendingTitle, setPendingTitle] = useState<string | null>(null);
   useEffect(() => setPendingTitle(null), [node.title]);
   const title = pendingTitle ?? node.title;
@@ -102,9 +105,11 @@ function Folder({ node, containerKey, depth }: FolderProps) {
   // moves up a level, and dropping on contents means you can drag past an open
   // folder without aiming for a thin strip. A bookmark can only be dropped into,
   // anywhere on the header. Archived folders can't be dragged themselves (their
-  // position is computed), but still accept drops.
+  // position is computed), but still accept drops. A link dragged in from
+  // outside the page is added into the folder, from anywhere on it.
   const dropModeAt = (e: DragEvent): DragBand | null => {
     const source = dragged.current;
+    if (!source) return carriesLink(e) ? "into" : null;
     const into = canDropInto(source, node.id, parents) ? "into" : null;
     const beside = canDropBeside(source, unit, parents);
     const header = headerRef.current!.getBoundingClientRect();
@@ -140,7 +145,7 @@ function Folder({ node, containerKey, depth }: FolderProps) {
     setDropMode(mode);
     if (!mode) return;
     e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
+    e.dataTransfer.dropEffect = dragged.current ? "move" : "copy";
   };
 
   const dropProps = query
@@ -156,9 +161,11 @@ function Folder({ node, containerKey, depth }: FolderProps) {
           const mode = resolveDrop(e);
           const source = dragged.current;
           setDropMode(null);
-          if (!mode || !source) return;
+          if (!mode) return;
           e.preventDefault();
-          if (mode === "into") {
+          if (!source) {
+            createFromDrop(e.dataTransfer, node.id);
+          } else if (mode === "into") {
             captureLayout();
             chrome.bookmarks.move(source.id, { parentId: node.id });
           } else {
@@ -201,7 +208,7 @@ function Folder({ node, containerKey, depth }: FolderProps) {
 
   return (
     <div className={className} data-folder-id={node.id} data-parent-id={node.parentId} {...dropProps}>
-      <div className="folder-header" ref={headerRef} {...headerProps}>
+      <div className={adding ? "folder-header popover-anchor" : "folder-header"} ref={headerRef} {...headerProps}>
         {renaming ? (
           <>
             <span className="chevron">
@@ -229,6 +236,23 @@ function Folder({ node, containerKey, depth }: FolderProps) {
         {archived && <span className="folder-badge">Archived</span>}
         {collapsed && !archived && !renaming && <FolderPreview node={node} />}
         <span className="folder-actions">
+          <button
+            type="button"
+            title="Add bookmark or folder"
+            aria-haspopup="dialog"
+            aria-expanded={adding}
+            // Same as the bookmark edit button: while open, this button is the
+            // popover's invoker, so clicking it again closes it.
+            popoverTarget={adding ? addPopoverId : undefined}
+            popoverTargetAction="hide"
+            onClick={(e) => {
+              if (adding) return;
+              e.preventDefault();
+              setAdding(true);
+            }}
+          >
+            <PlusIcon size={15} />
+          </button>
           <button type="button" title="Rename" onClick={() => setRenaming(true)}>
             <PencilIcon size={15} />
           </button>
@@ -242,6 +266,18 @@ function Folder({ node, containerKey, depth }: FolderProps) {
           </button>
         </span>
       </div>
+      {adding && (
+        <AddPopover
+          id={addPopoverId}
+          parentId={node.id}
+          parentTitle={title || "(untitled)"}
+          // Under the + button, at the header's right end.
+          alignEnd
+          // Open the folder so the new item is visible.
+          onAdded={() => meta.collapsed && updateFolderMeta((current) => toggleCollapsed(current, node.id, Date.now()))}
+          onClose={() => setAdding(false)}
+        />
+      )}
       <div className="folder-children">
         <FolderChildren node={node} depth={depth} />
       </div>

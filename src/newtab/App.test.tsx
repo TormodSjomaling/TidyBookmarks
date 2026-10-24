@@ -411,4 +411,88 @@ describe("new tab page", () => {
       await waitFor(() => expect(fake.find("personal")!.parentId).toBe("acme"));
     });
   });
+
+  describe("adding bookmarks and folders", () => {
+    const openAdd = (id: string) => {
+      fireEvent.click(folderEl(id).querySelector('button[title="Add bookmark or folder"]')!);
+      return screen.getByRole("dialog");
+    };
+    const childIds = (id: string) => fake.find(id)!.children!.map((c) => c.id);
+
+    it("adds a bookmark at the end of a folder, named by its site if left unnamed", async () => {
+      await renderApp();
+      const dialog = openAdd("personal");
+      expect(dialog.getAttribute("aria-label")).toBe("Add to Personal");
+      fireEvent.change(screen.getByLabelText("URL"), { target: { value: "www.example.com/x" } });
+      fireEvent.click(screen.getByRole("button", { name: "Add bookmark" }));
+
+      await waitFor(() => expect(childIds("personal")).toHaveLength(2));
+      const added = fake.find(childIds("personal")[1])!;
+      expect(added).toMatchObject({ title: "example.com", url: "https://www.example.com/x" });
+      expect(await screen.findByText("example.com")).toBeTruthy();
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("refuses a URL that doesn't parse", async () => {
+      await renderApp();
+      openAdd("personal");
+      fireEvent.change(screen.getByLabelText("URL"), { target: { value: "not a url" } });
+      fireEvent.click(screen.getByRole("button", { name: "Add bookmark" }));
+      expect(screen.getByRole("alert").textContent).toMatch(/valid URL/);
+      expect(childIds("personal")).toHaveLength(1);
+    });
+
+    it("adds a subfolder, which needs a name", async () => {
+      await renderApp();
+      openAdd("personal");
+      fireEvent.click(screen.getByRole("button", { name: "Folder" }));
+      fireEvent.click(screen.getByRole("button", { name: "Add folder" }));
+      expect(screen.getByRole("alert").textContent).toMatch(/name/);
+
+      fireEvent.change(screen.getByLabelText("Folder name"), { target: { value: "Taxes" } });
+      fireEvent.click(screen.getByRole("button", { name: "Add folder" }));
+      await waitFor(() => expect(fake.find(childIds("personal")[1])).toMatchObject({ title: "Taxes", children: [] }));
+    });
+
+    it("opens a collapsed folder after adding to it", async () => {
+      await renderApp({ folderMeta: { personal: { collapsed: true, archived: false, lastArchivedAt: null } } });
+      openAdd("personal");
+      fireEvent.change(screen.getByLabelText("URL"), { target: { value: "example.com" } });
+      fireEvent.click(screen.getByRole("button", { name: "Add bookmark" }));
+      await waitFor(() => expect(folderEl("personal").classList.contains("collapsed")).toBe(false));
+      expect(storedMeta().personal.collapsed).toBe(false);
+    });
+
+    it("adds a top-level folder to the end of the bookmarks bar", async () => {
+      await renderApp();
+      fireEvent.click(screen.getByRole("button", { name: "New folder" }));
+      fireEvent.change(screen.getByLabelText("Folder name"), { target: { value: "Inbox" } });
+      fireEvent.click(screen.getByRole("button", { name: "Add folder" }));
+      await waitFor(() => expect(fake.find(childIds("1").at(-1)!)!.title).toBe("Inbox"));
+    });
+
+    it("saves a link dragged in from another window into the folder under the pointer", async () => {
+      await renderApp();
+      const data: Record<string, string> = {
+        "text/uri-list": "https://news.example/story",
+        "text/html": '<meta charset="utf-8"><a href="https://news.example/story">A good story</a>',
+      };
+      const dataTransfer = { types: Object.keys(data), getData: (type: string) => data[type] ?? "", dropEffect: "" };
+
+      fireEvent.dragOver(folderEl("acme").querySelector('[data-bookmark-id="inv"]')!, { dataTransfer });
+      expect(folderEl("acme").classList.contains("drag-over-into")).toBe(true);
+      expect(dataTransfer.dropEffect).toBe("copy");
+      fireEvent.drop(folderEl("acme").querySelector('[data-bookmark-id="inv"]')!, { dataTransfer });
+
+      await waitFor(() => expect(childIds("acme")).toHaveLength(2));
+      expect(fake.find(childIds("acme")[1])).toMatchObject({ title: "A good story", url: "https://news.example/story" });
+    });
+
+    it("ignores dragged text that isn't a link", async () => {
+      await renderApp();
+      const dataTransfer = { types: ["text/plain"], getData: () => "hello", dropEffect: "" };
+      fireEvent.dragOver(header("personal"), { dataTransfer });
+      expect(folderEl("personal").classList.contains("drag-over-into")).toBe(false);
+    });
+  });
 });

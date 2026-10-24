@@ -1,5 +1,6 @@
 import { useState, type DragEvent } from "react";
 import { canDropOnto, moveIndex, type DragUnit, type DropPlace } from "../lib/dnd";
+import { droppedLink } from "../lib/links";
 import { isFolder } from "../lib/tree";
 import type { BookmarkNode } from "../lib/types";
 import { useDashboard } from "./dashboard";
@@ -15,6 +16,21 @@ export function toUnit(node: BookmarkNode, containerKey: string): DragUnit {
 export function applyReorder(source: DragUnit, target: DragUnit, place?: DropPlace) {
   captureLayout();
   return chrome.bookmarks.move(source.id, { parentId: target.parentId, index: moveIndex(source, target, place) });
+}
+
+// A link dragged in from another window or tab (or the address bar). Its data
+// can only be read on drop; while dragging, only the types are visible.
+export function carriesLink(e: DragEvent): boolean {
+  return e.dataTransfer?.types.includes("text/uri-list") ?? false;
+}
+
+// Saves a link dropped from outside the page as a bookmark at the end of
+// `parentId`, named by the link's text when it has some.
+export function createFromDrop(dataTransfer: DataTransfer, parentId: string) {
+  const html = dataTransfer.getData("text/html");
+  const linkText = html ? (new DOMParser().parseFromString(html, "text/html").querySelector("a")?.textContent ?? null) : null;
+  const link = droppedLink(dataTransfer.getData("text/uri-list"), linkText);
+  if (link) chrome.bookmarks.create({ parentId, ...link });
 }
 
 // Folders nest, so a drag event over an inner folder bubbles up through its

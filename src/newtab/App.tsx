@@ -1,9 +1,10 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { DragUnit } from "../lib/dnd";
 import { buildParentMap, isFolder, normalizeQuery, searchResults, visibleChildren } from "../lib/tree";
 import type { BookmarkNode } from "../lib/types";
-import { GearIcon, SearchIcon } from "../shared/icons";
+import { GearIcon, PlusIcon, SearchIcon } from "../shared/icons";
 import { useSettings } from "../shared/settings";
+import { AddPopover } from "./AddPopover";
 import { Bookmark } from "./Bookmark";
 import { DashboardContext, type Dashboard } from "./dashboard";
 import { FolderList } from "./Folder";
@@ -62,6 +63,8 @@ export function App() {
   const activeResultId = results[Math.min(activeIndex, results.length - 1)]?.id ?? null;
 
   const parents = useMemo(() => buildParentMap(roots ?? []), [roots]);
+  const [addingFolder, setAddingFolder] = useState(false);
+  const addFolderId = useId();
   // Animates our own drops once the re-read tree is on screen (glide.ts).
   useLayoutEffect(playGlide, [roots]);
 
@@ -160,6 +163,36 @@ export function App() {
                 <FolderList folders={section.folders} parentId={section.root.id} depth={0} />
               </div>
             ))
+        )}
+        {!query && roots.length > 0 && (
+          <div className="add-folder-row">
+            <button
+              type="button"
+              className={addingFolder ? "add-folder popover-anchor" : "add-folder"}
+              aria-haspopup="dialog"
+              aria-expanded={addingFolder}
+              popoverTarget={addingFolder ? addFolderId : undefined}
+              popoverTargetAction="hide"
+              onClick={(e) => {
+                if (addingFolder) return;
+                e.preventDefault();
+                setAddingFolder(true);
+              }}
+            >
+              <PlusIcon size={15} />
+              New folder
+            </button>
+          </div>
+        )}
+        {addingFolder && (
+          // New top-level folders go at the end of the bookmarks bar.
+          <AddPopover
+            id={addFolderId}
+            parentId={roots[0].id}
+            parentTitle={roots[0].title}
+            folderOnly
+            onClose={() => setAddingFolder(false)}
+          />
         )}
       </main>
     </DashboardContext.Provider>

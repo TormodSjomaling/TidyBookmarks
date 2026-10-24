@@ -24,7 +24,12 @@ const saveStorage = () => localStorage.setItem(STORAGE_KEY, JSON.stringify(fake.
 saveBookmarks();
 saveStorage();
 
-for (const event of [chrome.bookmarks.onChanged, chrome.bookmarks.onMoved, chrome.bookmarks.onRemoved]) {
+for (const event of [
+  chrome.bookmarks.onCreated,
+  chrome.bookmarks.onChanged,
+  chrome.bookmarks.onMoved,
+  chrome.bookmarks.onRemoved,
+]) {
   (event as chrome.events.Event<() => void>).addListener(saveBookmarks);
 }
 chrome.storage.onChanged.addListener(saveStorage);

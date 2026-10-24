@@ -23,6 +23,7 @@ It reads and writes your real Chrome bookmarks (`chrome://bookmarks`) — nothin
 - **Search** — start typing anywhere on the page (or press `/`) to filter bookmarks and folders by title or URL, including inside collapsed and archived folders. Matches are highlighted; ↑/↓ pick a result, Enter opens it, Ctrl+Enter (⌘+Enter on Mac) opens it in a background tab.
 - **Drag-and-drop** — drag a bookmark or folder onto another in the same list to reorder, or drop it onto the middle of a different folder to move it inside that folder. A line shows where a folder will land.
 - **Edit bookmarks** — hover a bookmark and click the pencil icon to change its name or URL, or delete it, in a small popover.
+- **Add bookmarks and folders** — the **+** on a folder adds a bookmark (paste a URL; the name is optional) or a subfolder, and **New folder** under your folders adds one to the bookmarks bar. You can also drag a link, or the address bar's site icon, from another window onto a folder to save it there.
 - **Inline folder rename** — hover a folder and click the pencil icon to rename it in place.
 - **Dark, light, or system theme** and an optional **compact density** mode, both in Options.
 
@@ -54,6 +55,7 @@ Requires Node 24 (see `.nvmrc`).
 - **Move into a folder**: drag a bookmark or folder and drop it on the middle of a different folder's row to move it inside.
 - **Edit a bookmark**: hover it and click the pencil icon (on the small icon-only bookmarks in the top row, rest the pointer on one for a moment and the pencil appears on its corner, so quick clicks always open the bookmark). Change the name or URL and press Enter or **Save**; Escape, **Cancel** or clicking outside closes without saving. A URL without `https://` gets it added. **Delete** asks you to confirm, then removes the bookmark from Chrome itself (not just this page).
 - **Rename a folder**: hover it, click the pencil icon, edit, press Enter (or click away) to save, Escape to cancel.
+- **Add to a folder**: hover it and click **+**. Paste a URL (a name is optional; it defaults to the site, e.g. `github.com`) and press Enter, or switch to **Folder** to add a subfolder. New items go at the end, and a collapsed folder opens to show them. **New folder** below your folders adds a top-level folder at the end of the bookmarks bar. Dragging a link in from another window or tab onto a folder (its header or anywhere in it) saves it there, named by the link's text.
 - **Options**: click the ⚙ icon top-right to toggle whether default (unfoldered) bookmarks show as favicon-only icons or full title cards, choose a theme (System/Dark/Light), and turn on compact density.
 
 ## Known limitations

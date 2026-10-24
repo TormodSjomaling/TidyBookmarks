@@ -1,23 +1,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
+import { normalizeUrl } from "../lib/links";
 import type { BookmarkNode } from "../lib/types";
-
-// Accepts what people type in a browser's address bar: "example.com" becomes
-// "https://example.com/". Returns null for anything that still isn't a URL.
-export function normalizeUrl(input: string): string | null {
-  const trimmed = input.trim();
-  if (!trimmed) return null;
-  // "localhost:3000" looks like a scheme too, so only trust ones written with
-  // "//" or the few common schemes that don't use it.
-  const hasScheme =
-    /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) || /^(mailto|tel|about|data|javascript):/i.test(trimmed);
-  const withScheme = hasScheme ? trimmed : `https://${trimmed}`;
-  try {
-    return new URL(withScheme).href;
-  } catch {
-    return null;
-  }
-}
 
 interface Props {
   id: string;
