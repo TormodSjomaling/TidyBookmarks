@@ -10,13 +10,14 @@ Tidy Bookmarks is a Manifest V3 Chrome extension that overrides the new-tab page
 
 Requires Node 24 (`.nvmrc`).
 
-- **Dev loop**: `npm run dev` (Vite build in watch mode into `dist/`). Load `dist/` via `chrome://extensions` → Developer mode → "Load unpacked". After a rebuild, click the reload icon on the extension's card, then refresh the new tab (or Options tab).
+- **Browser preview**: `npm run dev:web` serves the pages at localhost with hot reload, backed by the fake `chrome` API (`src/dev/fakeChrome.ts`) and sample bookmarks (`src/dev/sampleBookmarks.ts`). `src/dev/webPreview.ts` is injected only in this mode by the `webPreview` plugin in `vite.config.ts`; it persists to `localStorage`, syncs storage across preview tabs, and serves a placeholder at `/_favicon/`. None of `src/dev/` ships in production builds.
+- **Dev loop (real extension)**: `npm run dev` (Vite build in watch mode into `dist/`). Load `dist/` via `chrome://extensions` → Developer mode → "Load unpacked". After a rebuild, click the reload icon on the extension's card, then refresh the new tab (or Options tab).
 - **Test**: `npm test` (Vitest, jsdom). `npm run test:watch` for watch mode. A single file: `npx vitest run src/lib/tree.test.ts`.
 - **Typecheck**: `npm run typecheck` (`tsc`, strict, no emit).
 - **Production build**: `npm run build` (typecheck + `vite build`). `npm run package` zips `dist/` into `tidy-bookmarks-<version>.zip`.
 - **Release**: `npm version patch|minor|major` then `git push --follow-tags`. The `v*` tag triggers `.github/workflows/release.yml`, which tests, builds, uploads and publishes to the Chrome Web Store and creates a GitHub Release. See `PUBLISHING.md` → "Releasing updates". `package.json` is the single source of truth for the version: the Vite config stamps it into `dist/manifest.json`, so don't bump `manifest.json`'s `version` by hand.
 
-Tests run against a fake `chrome` API (`src/test/fakeChrome.ts`), not a real browser. For anything touching real Chrome behavior (favicons, drag-and-drop feel, extension CSP), also reload the unpacked build and click through it.
+Tests run against a fake `chrome` API (`src/dev/fakeChrome.ts`, shared with the browser preview), not a real browser. For anything touching real Chrome behavior (favicons, drag-and-drop feel, extension CSP), also reload the unpacked build and click through it.
 
 ## Layout
 

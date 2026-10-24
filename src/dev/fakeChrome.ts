@@ -1,5 +1,6 @@
 // A minimal in-memory stand-in for the chrome.* APIs the extension uses, so
-// whole pages can be rendered and exercised under jsdom.
+// whole pages can run outside an extension: under jsdom in tests, and in a
+// normal browser tab for the `npm run dev:web` preview (see webPreview.ts).
 import type { BookmarkNode } from "../lib/types";
 
 type Listener = (...args: unknown[]) => void;

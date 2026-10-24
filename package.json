@@ -6,6 +6,7 @@
   "description": "A tidy new-tab bookmark dashboard that keeps nested folders organized and archives old clients out of the way.",
   "scripts": {
     "dev": "vite build --watch --mode development",
+    "dev:web": "vite --mode web",
     "build": "tsc && vite build",
     "typecheck": "tsc",
     "test": "vitest run",

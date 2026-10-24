@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BookmarkNode, FolderMetaMap } from "../lib/types";
-import { installFakeChrome, type FakeChrome } from "../test/fakeChrome";
+import { installFakeChrome, type FakeChrome } from "../dev/fakeChrome";
 import { App } from "./App";
 
 const roots: BookmarkNode[] = [
