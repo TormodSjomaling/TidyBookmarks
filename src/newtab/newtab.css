@@ -344,6 +344,7 @@ main#app {
 }
 
 .bookmark-item:hover .bookmark-edit-btn,
+.bookmark-item:focus-within .bookmark-edit-btn,
 .bookmark-item--editing .bookmark-edit-btn {
   visibility: visible;
 }
@@ -367,6 +368,32 @@ main#app {
 .bookmark-item.bookmark-item--compact .favicon {
   width: 20px;
   height: 20px;
+}
+
+/* Icon-only tiles are too small to share with the edit button, so it sits on
+   the tile's outer corner (mostly in the gap between tiles) and only appears
+   after a short hover. A hidden button can't be clicked, so a quick click
+   always lands on the bookmark itself. */
+.bookmark-item--compact .bookmark-edit-btn {
+  top: -9px;
+  right: -9px;
+  padding: 0.1rem 0.2rem;
+  font-size: 0.6rem;
+  border-radius: 999px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  /* Hide immediately when the pointer leaves... */
+  transition: visibility 0s;
+}
+
+.bookmark-item--compact:hover .bookmark-edit-btn {
+  /* ...but only show after resting on the tile for a moment. */
+  transition-delay: 0.4s;
+}
+
+.bookmark-item--compact .bookmark-edit-btn:hover {
+  background: var(--bg);
+  border-color: var(--accent);
 }
 
 .empty-state {

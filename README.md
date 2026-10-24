@@ -52,7 +52,7 @@ Requires Node 24 (see `.nvmrc`).
 - **Search**: type in the search box in the header. Matching folders force open (without changing their saved collapsed/archived state) and everything else is hidden; clear the box or press Escape to go back to normal. Dragging is disabled while a search is active.
 - **Reorder**: drag a bookmark or folder and drop it near the top or bottom edge of another one in the same list.
 - **Move into a folder**: drag a bookmark or folder and drop it on the middle of a different folder's row to move it inside.
-- **Edit a bookmark**: hover it and click the pencil icon. Change the name or URL and press Enter or **Save**; Escape, **Cancel** or clicking outside closes without saving. A URL without `https://` gets it added. **Delete** asks you to confirm, then removes the bookmark from Chrome itself (not just this page).
+- **Edit a bookmark**: hover it and click the pencil icon (on the small icon-only bookmarks in the top row, rest the pointer on one for a moment and the pencil appears on its corner, so quick clicks always open the bookmark). Change the name or URL and press Enter or **Save**; Escape, **Cancel** or clicking outside closes without saving. A URL without `https://` gets it added. **Delete** asks you to confirm, then removes the bookmark from Chrome itself (not just this page).
 - **Rename a folder**: hover it, click the pencil icon, edit, press Enter (or click away) to save, Escape to cancel.
 - **Options**: click the ⚙ icon top-right to toggle whether default (unfoldered) bookmarks show as favicon-only icons or full title cards, choose a theme (System/Dark/Light), and turn on compact density.
 
