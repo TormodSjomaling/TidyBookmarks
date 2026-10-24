@@ -1,9 +1,10 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { BookmarkNode } from "../lib/types";
 import { PencilIcon } from "../shared/icons";
 import { BookmarkEditor } from "./BookmarkEditor";
 import { faviconUrl, useDashboard } from "./dashboard";
 import { toUnit, useDragSource, useReorderTarget } from "./drag";
+import { Highlight } from "./Highlight";
 
 interface Props {
   node: BookmarkNode;
@@ -14,7 +15,12 @@ interface Props {
 }
 
 export function Bookmark({ node, isDefault, containerKey }: Props) {
-  const { settings, query } = useDashboard();
+  const { settings, query, activeResultId } = useDashboard();
+  const active = activeResultId === node.id;
+  const tile = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (active) tile.current?.scrollIntoView?.({ block: "nearest" });
+  }, [active]);
   const [editing, setEditing] = useState(false);
   const editorId = useId();
   // Shown between saving an edit and the tree re-reading the bookmark.
@@ -33,6 +39,7 @@ export function Bookmark({ node, isDefault, containerKey }: Props) {
     "bookmark-item",
     compact && "bookmark-item--compact",
     editing && "bookmark-item--editing",
+    active && "bookmark-item--active",
     dragging && "dragging",
     over === "before" && "drop-before",
     over === "after" && "drop-after",
@@ -42,6 +49,7 @@ export function Bookmark({ node, isDefault, containerKey }: Props) {
 
   return (
     <div
+      ref={tile}
       className={className}
       data-bookmark-id={node.id}
       data-parent-id={node.parentId}
@@ -50,7 +58,11 @@ export function Bookmark({ node, isDefault, containerKey }: Props) {
     >
       <a href={url} className="bookmark-link" title={title || url}>
         <img className="favicon" src={faviconUrl(url)} alt="" />
-        {!compact && <span className="bookmark-title">{title || url}</span>}
+        {!compact && (
+          <span className="bookmark-title">
+            <Highlight text={title || url} />
+          </span>
+        )}
       </a>
       <button
         type="button"

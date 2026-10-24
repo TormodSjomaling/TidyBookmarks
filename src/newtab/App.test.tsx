@@ -114,6 +114,63 @@ describe("new tab page", () => {
     expect(folderEl("acme").classList.contains("collapsed")).toBe(true);
   });
 
+  describe("search keyboard", () => {
+    const search = () => screen.getByPlaceholderText("Search bookmarks…");
+    const tile = (id: string) => document.querySelector(`[data-bookmark-id="${id}"]`)!;
+    // "in" matches LinkedIn (header row) and Invoices (inside Work › Acme).
+    async function searchFor(text: string) {
+      fireEvent.change(search(), { target: { value: text } });
+      await screen.findByText("2 matches");
+    }
+
+    it("selects the first match, moves with the arrows and opens with Enter", async () => {
+      await renderApp();
+      await searchFor("in");
+      expect(tile("li").classList.contains("bookmark-item--active")).toBe(true);
+
+      fireEvent.keyDown(search(), { key: "ArrowDown" });
+      expect(tile("inv").classList.contains("bookmark-item--active")).toBe(true);
+      fireEvent.keyDown(search(), { key: "ArrowDown" });
+      expect(tile("inv").classList.contains("bookmark-item--active")).toBe(true);
+
+      fireEvent.keyDown(search(), { key: "Enter" });
+      expect(fake.opened).toEqual([{ url: "https://billing.example", newTab: false }]);
+    });
+
+    it("opens in a background tab with Ctrl+Enter", async () => {
+      await renderApp();
+      await searchFor("in");
+      fireEvent.keyDown(search(), { key: "Enter", ctrlKey: true });
+      expect(fake.opened).toEqual([{ url: "https://linkedin.com", newTab: true }]);
+    });
+
+    it("opens the first match of what's typed, even before the results update", async () => {
+      await renderApp();
+      fireEvent.change(search(), { target: { value: "bank" } });
+      fireEvent.keyDown(search(), { key: "Enter" });
+      expect(fake.opened).toEqual([{ url: "https://bank.example", newTab: false }]);
+    });
+
+    it("highlights matches in titles", async () => {
+      await renderApp();
+      await searchFor("in");
+      expect(tile("inv").querySelector("mark")?.textContent).toBe("In");
+    });
+
+    it("focuses the search box when typing anywhere on the page, but not in other inputs", async () => {
+      await renderApp();
+      fireEvent.keyDown(document.body, { key: "j" });
+      expect(document.activeElement).toBe(search());
+
+      search().blur();
+      fireEvent.click(folderEl("acme").querySelector('button[title="Rename"]')!);
+      const rename = folderEl("acme").querySelector("input")!;
+      rename.focus();
+      fireEvent.keyDown(rename, { key: "j" });
+      expect(document.activeElement).toBe(rename);
+    });
+  });
+
   it("shows an empty state when nothing matches", async () => {
     await renderApp();
     fireEvent.change(screen.getByPlaceholderText("Search bookmarks…"), { target: { value: "zzzz" } });

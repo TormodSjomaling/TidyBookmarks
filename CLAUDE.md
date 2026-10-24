@@ -60,6 +60,10 @@ While `query` is non-empty:
 - `isArchived` returns `false`, so archived folders render plainly (no dimming, no summary grouping) — the same as manually re-expanding an archived folder.
 - `Folder` renders `collapsed = meta.collapsed && !query`: matching folders force open without mutating `folderMeta`, so clearing the search restores the exact prior view.
 - Collapse-on-click and all drag-and-drop wiring are omitted. Search shows a partial tree, and reordering against a partial index would be unsafe.
+- `searchResults(roots, query)` lists the matching bookmarks in on-screen order (header row first, then folders, a folder's own bookmarks before its subfolders'). ↑/↓ in the search box move `activeResultId` (in `DashboardContext`) through it; Enter opens it via `chrome.tabs.update`, Ctrl/⌘+Enter via `chrome.tabs.create({ active: false })`. Enter recomputes from the box's current text when it beats the debounce. Keep `searchResults`' order in step with how `App`/`FolderChildren` render.
+- `Highlight` wraps matches (`splitMatches`) in `<mark>` in bookmark titles and folder names.
+
+A document-level keydown focuses the search box on any printable key typed outside a text field (focusing during keydown makes the character land in the box); `/` only focuses it.
 
 ### Drag-and-drop
 The dragged item lives in `DashboardContext.dragged` (a ref, not state — dragover handlers read it synchronously). Every source/target is a `DragUnit { id, parentId, index, containerKey, folder }`, where `index` is the node's real position among all its parent's children and `containerKey` names the rendered list it sits in.

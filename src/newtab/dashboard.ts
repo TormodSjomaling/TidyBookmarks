@@ -15,6 +15,8 @@ export interface Dashboard {
   // The item currently being dragged, if any. A ref rather than state: it's
   // read synchronously by dragover handlers and never drives rendering.
   dragged: MutableRefObject<DragUnit | null>;
+  // While searching, the matching bookmark Enter would open; arrow keys move it.
+  activeResultId: string | null;
 }
 
 export const DashboardContext = createContext<Dashboard | null>(null);

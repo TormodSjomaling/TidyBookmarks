@@ -8,6 +8,7 @@ import { Bookmark } from "./Bookmark";
 import { faviconUrl, useDashboard } from "./dashboard";
 import { applyReorder, claim, isClaimed, toUnit, useDragSource } from "./drag";
 import { captureLayout } from "./glide";
+import { Highlight } from "./Highlight";
 import { InlineEdit } from "./InlineEdit";
 
 // A list of bookmark tiles sharing one parent, as rendered inside a folder.
@@ -220,7 +221,9 @@ function Folder({ node, containerKey, depth }: FolderProps) {
             <span className="chevron">
               <ChevronIcon />
             </span>
-            <span className="folder-name">{title || "(untitled)"}</span>
+            <span className="folder-name">
+              <Highlight text={title || "(untitled)"} />
+            </span>
           </button>
         )}
         {archived && <span className="folder-badge">Archived</span>}

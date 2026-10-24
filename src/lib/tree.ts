@@ -120,3 +120,40 @@ export function folderPreview(folder: BookmarkNode, limit: number): { count: num
   }
   return { count, first };
 }
+
+// Every bookmark matching `query`, in the order the page shows them: each
+// root's loose bookmarks first (the header row), then each root's folders,
+// with a folder's own bookmarks before its subfolders'. Arrow keys step
+// through this list while searching.
+export function searchResults(roots: BookmarkNode[], query: string): BookmarkNode[] {
+  if (!query) return [];
+  const results: BookmarkNode[] = [];
+  const walkFolder = (folder: BookmarkNode) => {
+    const visible = visibleChildren(folder.children ?? [], query);
+    results.push(...visible.filter((child) => !isFolder(child)));
+    visible.filter(isFolder).forEach(walkFolder);
+  };
+  for (const root of roots) {
+    results.push(...visibleChildren(root.children ?? [], query).filter((child) => !isFolder(child)));
+  }
+  for (const root of roots) {
+    visibleChildren(root.children ?? [], query).filter(isFolder).forEach(walkFolder);
+  }
+  return results;
+}
+
+// Splits `text` into runs that do and don't match `query` (case-insensitive),
+// for highlighting matches.
+export function splitMatches(text: string, query: string): { text: string; match: boolean }[] {
+  if (!query) return [{ text, match: false }];
+  const parts: { text: string; match: boolean }[] = [];
+  const lower = text.toLowerCase();
+  let from = 0;
+  for (let at = lower.indexOf(query); at !== -1; at = lower.indexOf(query, from)) {
+    if (at > from) parts.push({ text: text.slice(from, at), match: false });
+    parts.push({ text: text.slice(at, at + query.length), match: true });
+    from = at + query.length;
+  }
+  if (from < text.length) parts.push({ text: text.slice(from), match: false });
+  return parts;
+}

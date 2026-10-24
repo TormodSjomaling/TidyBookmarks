@@ -50,6 +50,16 @@ Object.assign(chrome.runtime, {
   },
 });
 
+// Opening a bookmark from search navigates this tab, or opens another one.
+Object.assign(chrome.tabs, {
+  update: async ({ url }: { url: string }) => {
+    location.href = url;
+  },
+  create: async ({ url }: { url: string }) => {
+    window.open(url, "_blank");
+  },
+});
+
 // A small badge so the preview is never mistaken for the real extension.
 function addBadge() {
   const badge = document.createElement("div");

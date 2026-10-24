@@ -1,6 +1,6 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { DragUnit } from "../lib/dnd";
-import { buildParentMap, isFolder, normalizeQuery, visibleChildren } from "../lib/tree";
+import { buildParentMap, isFolder, normalizeQuery, searchResults, visibleChildren } from "../lib/tree";
 import type { BookmarkNode } from "../lib/types";
 import { GearIcon, SearchIcon } from "../shared/icons";
 import { useSettings } from "../shared/settings";
@@ -14,6 +14,20 @@ const DEFAULT_BOOKMARKS_KEY = "default";
 // Debounced so typing doesn't re-filter the whole tree on every keystroke.
 const SEARCH_DEBOUNCE_MS = 150;
 
+// Opens a bookmark in this tab, or in a background tab like a Ctrl-click.
+function openBookmark(url: string, newTab: boolean) {
+  if (newTab) chrome.tabs.create({ url, active: false });
+  else chrome.tabs.update({ url });
+}
+
+// Whether a key press should start a search: a printable key, typed while
+// nothing that takes text has focus.
+function startsSearch(e: KeyboardEvent): boolean {
+  if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return false;
+  if (e.key.length !== 1 || e.key === " ") return false;
+  return !(e.target as Element).closest?.("input, textarea, select, [contenteditable]");
+}
+
 export function App() {
   const roots = useBookmarkTree();
   const [folderMeta, updateFolderMeta] = useFolderMeta();
@@ -26,6 +40,26 @@ export function App() {
     const timer = setTimeout(() => setQuery(normalizeQuery(searchText)), SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [searchText]);
+
+  // Typing anywhere on the page goes into the search box. "/" just focuses it.
+  const searchInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!startsSearch(e)) return;
+      if (e.key === "/") e.preventDefault();
+      // Focusing during keydown sends the key's character to the search box.
+      searchInput.current?.focus();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  // While searching, the arrow keys step through the matching bookmarks, and
+  // Enter opens the selected one (the first, until the arrows move).
+  const results = useMemo(() => searchResults(roots ?? [], query), [roots, query]);
+  const [activeIndex, setActiveIndex] = useState(0);
+  useEffect(() => setActiveIndex(0), [query]);
+  const activeResultId = results[Math.min(activeIndex, results.length - 1)]?.id ?? null;
 
   const parents = useMemo(() => buildParentMap(roots ?? []), [roots]);
   // Animates our own drops once the re-read tree is on screen (glide.ts).
@@ -42,7 +76,32 @@ export function App() {
 
   if (!roots || !folderMeta || !settings) return null;
 
-  const dashboard: Dashboard = { folderMeta, updateFolderMeta, settings, query, parents, dragged };
+  const dashboard: Dashboard = { folderMeta, updateFolderMeta, settings, query, parents, dragged, activeResultId };
+
+  const clearSearch = () => {
+    setSearchText("");
+    setQuery("");
+  };
+
+  const onSearchKeyDown = (e: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      clearSearch();
+      e.currentTarget.blur();
+    } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const step = e.key === "ArrowDown" ? 1 : -1;
+      setActiveIndex((i) => Math.max(0, Math.min(results.length - 1, i + step)));
+    } else if (e.key === "Enter") {
+      // Enter can beat the debounce; search what's typed right now.
+      const typed = normalizeQuery(searchText);
+      const current = typed === query ? results : searchResults(roots, typed);
+      const target = typed === query ? current[Math.min(activeIndex, current.length - 1)] : current[0];
+      if (!target?.url) return;
+      e.preventDefault();
+      openBookmark(target.url, e.ctrlKey || e.metaKey);
+    }
+  };
 
   // Each Chrome root (bookmarks bar, other bookmarks, mobile) contributes its
   // loose bookmarks to the shared header row and its folders to the main area.
@@ -69,19 +128,21 @@ export function App() {
             <SearchIcon size={15} />
             <input
               id="search-input"
+              ref={searchInput}
               type="text"
               placeholder="Search bookmarks…"
+              aria-describedby="search-count"
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  e.preventDefault();
-                  setSearchText("");
-                  setQuery("");
-                  e.currentTarget.blur();
-                }
-              }}
+              onKeyDown={onSearchKeyDown}
             />
+            {query ? (
+              <span id="search-count" className="search-count" aria-live="polite">
+                {results.length === 0 ? "None" : results.length === 1 ? "1 match" : `${results.length} matches`}
+              </span>
+            ) : (
+              !searchText && <kbd className="search-hint">/</kbd>
+            )}
           </label>
           <button id="options-btn" type="button" title="Options" onClick={() => chrome.runtime.openOptionsPage()}>
             <GearIcon size={18} />

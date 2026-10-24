@@ -45,7 +45,7 @@ button {
   display: flex;
   align-items: center;
   gap: 0.45rem;
-  width: 230px;
+  width: 260px;
   padding: 0.35rem 0.8rem;
   border-radius: 999px;
   background: var(--tile);
@@ -75,6 +75,36 @@ button {
 
 #search-input::placeholder {
   color: var(--text-dim);
+}
+
+.search-count {
+  flex: none;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* "/" focuses search; shown while the box is empty and unfocused. */
+.search-hint {
+  flex: none;
+  padding: 0 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+#search-box:focus-within .search-hint {
+  display: none;
+}
+
+/* Search matches in bookmark titles and folder names. */
+mark {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+  color: inherit;
+  border-radius: 3px;
 }
 
 #options-btn {
@@ -431,6 +461,12 @@ main#app > div > .archived-summary {
 .bookmark-item:has(.bookmark-link:focus-visible) {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+/* The search result Enter opens. */
+.bookmark-item--active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent), var(--shadow-lifted);
 }
 
 .bookmark-item.dragging {

@@ -8,6 +8,8 @@ import {
   nodeMatchesQuery,
   normalizeQuery,
   orderFolders,
+  searchResults,
+  splitMatches,
   visibleChildren,
 } from "./tree";
 import type { BookmarkNode, FolderMetaMap } from "./types";
@@ -135,5 +137,42 @@ describe("folderPreview", () => {
 
   it("previews the folder's own bookmarks before its subfolders'", () => {
     expect(ids(folderPreview(tree, 3).first)).toEqual(["a", "b", "deep"]);
+  });
+});
+
+describe("searchResults", () => {
+  const roots = [
+    folder("1", "Bar", [
+      bookmark("loose", "Docs home"),
+      folder("work", "Work", [
+        folder("sub", "Sub", [bookmark("deep", "Deep docs")]),
+        bookmark("own", "Own docs"),
+        bookmark("other", "Unrelated"),
+      ]),
+    ]),
+    folder("2", "Other", [bookmark("other-loose", "More docs")]),
+  ];
+
+  it("lists matches in page order: header row first, then folders, own bookmarks before subfolders'", () => {
+    expect(ids(searchResults(roots, "docs"))).toEqual(["loose", "other-loose", "own", "deep"]);
+  });
+
+  it("is empty without a query", () => {
+    expect(searchResults(roots, "")).toEqual([]);
+  });
+});
+
+describe("splitMatches", () => {
+  it("marks every case-insensitive match", () => {
+    expect(splitMatches("Docs and more docs", "docs")).toEqual([
+      { text: "Docs", match: true },
+      { text: " and more ", match: false },
+      { text: "docs", match: true },
+    ]);
+  });
+
+  it("returns the text whole when nothing matches", () => {
+    expect(splitMatches("Jira", "wiki")).toEqual([{ text: "Jira", match: false }]);
+    expect(splitMatches("Jira", "")).toEqual([{ text: "Jira", match: false }]);
   });
 });

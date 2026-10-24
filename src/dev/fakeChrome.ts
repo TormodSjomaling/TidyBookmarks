@@ -20,12 +20,15 @@ export interface FakeChrome {
   // Simulates another extension page writing to storage.
   externalStorageWrite(items: Record<string, unknown>): void;
   find(id: string): BookmarkNode | undefined;
+  // URLs opened through chrome.tabs, in order.
+  opened: { url: string; newTab: boolean }[];
 }
 
 export function installFakeChrome(roots: BookmarkNode[], initialStorage: Record<string, unknown> = {}): FakeChrome {
   const tree: BookmarkNode = { id: "0", title: "", children: structuredClone(roots) };
   const store: Record<string, unknown> = structuredClone(initialStorage);
   const storageChanged = fakeEvent();
+  const opened: { url: string; newTab: boolean }[] = [];
   const bookmarkEvents = {
     onCreated: fakeEvent(),
     onRemoved: fakeEvent(),
@@ -75,6 +78,10 @@ export function installFakeChrome(roots: BookmarkNode[], initialStorage: Record<
     runtime: {
       getURL: (path: string) => `chrome-extension://test${path}`,
       openOptionsPage: () => {},
+    },
+    tabs: {
+      update: async ({ url }: { url: string }) => void opened.push({ url, newTab: false }),
+      create: async ({ url }: { url: string }) => void opened.push({ url, newTab: true }),
     },
     storage: {
       local: {
@@ -136,5 +143,6 @@ export function installFakeChrome(roots: BookmarkNode[], initialStorage: Record<
     },
     externalStorageWrite: write,
     find: (id) => find(id),
+    opened,
   };
 }
