@@ -8,8 +8,10 @@ Tidy Bookmarks is a Manifest V3 Chrome extension that overrides the new-tab page
 
 ## Commands
 
-There is no package.json, build step, or test runner. Development loop:
+There is no test runner. `package.json` exists only for the build/release tooling — the extension itself still runs straight from the source folder. Development loop:
 
+- **Build a release bundle**: `npm run build` (copies runtime files into `dist/` and stamps `package.json`'s `version` into `dist/manifest.json`), then `npm run package` (zips `dist/` into `tidy-bookmarks-<version>.zip`). `package.json` is the single source of truth for the version; don't bump `manifest.json`'s `version` by hand.
+- **Release**: `npm version patch|minor|major` then `git push --follow-tags`. The `v*` tag triggers `.github/workflows/release.yml`, which builds, uploads and publishes to the Chrome Web Store and creates a GitHub Release. See `PUBLISHING.md` → "Releasing updates".
 - **Syntax-check JS after edits**: `node --check src/newtab/newtab.js` / `node --check src/options/options.js`
 - **Validate manifest.json**: `python3 -c "import json; json.load(open('manifest.json'))"`
 - **Load/reload in Chrome**: `chrome://extensions` → enable Developer mode → "Load unpacked" → select this folder. After edits, click the reload icon on the extension's card, then open/refresh a new tab (or the Options tab) to see changes.

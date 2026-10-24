@@ -1,0 +1,18 @@
+{
+  "name": "tidy-bookmarks",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A tidy new-tab bookmark dashboard that keeps nested folders organized and archives old clients out of the way.",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "package": "node scripts/package.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "adm-zip": "^0.6.1",
+    "chrome-webstore-upload-cli": "^4.0.2"
+  }
+}

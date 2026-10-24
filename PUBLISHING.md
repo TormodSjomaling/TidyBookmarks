@@ -14,8 +14,7 @@
 - [ ] The Store requires a **public URL** for your privacy policy, not just a file in the repo. Host `PRIVACY.md` somewhere public — a GitHub Pages page, a gist, or a simple static page — and note the URL for the listing form.
 
 ### 3. Package the extension
-- [ ] Zip only the runtime files: `manifest.json`, `src/newtab/`, `src/options/`, `icons/*.png`. Leave out dev/doc files (`README.md`, `PRIVACY.md`, `PUBLISHING.md`, `CONTEXT.md`, `CLAUDE.md`, `docs/`, `icons/icon.svg`) — they aren't needed to run and just bloat the package.
-- [ ] Bump `"version"` in `manifest.json` before each new submission — the Store rejects re-uploading the same version number.
+- [x] Automated — see [Releasing updates](#releasing-updates) below. `npm run build` copies only the runtime files (`manifest.json`, `src/`, `icons/*.png`) into `dist/`, and `npm run package` zips that into `tidy-bookmarks-<version>.zip`.
 
 ### 4. Store listing assets
 - [ ] **Short description** (≤132 characters) — e.g. "A tidy new-tab bookmark dashboard that archives old client folders out of the way."
@@ -40,3 +39,34 @@ Extensions that override the new-tab page get closer review (this category has a
 ### 7. Submit and wait
 - [ ] Submit for review. Typical turnaround is a few days to a couple of weeks.
 - [ ] After approval, the listing goes live automatically (or on a scheduled date, if you set one).
+
+## Releasing updates
+
+Releases are automated by `.github/workflows/release.yml`. It runs when a `v*` tag is pushed.
+
+### Every release
+```sh
+npm version patch   # or minor / major — bumps package.json and creates the v<version> tag
+git push --follow-tags
+```
+The workflow then:
+1. Checks that the tag matches `package.json`'s version (and fails if it doesn't).
+2. Runs `npm run build` + `npm run package`. The version in `package.json` is written into the bundled `manifest.json`.
+3. Uploads the zip to the Chrome Web Store and submits it for review and publishing.
+4. Creates a GitHub Release with the zip attached and notes generated from the commits.
+
+Don't edit `"version"` in `manifest.json` by hand, because `package.json` is the source of truth. The Store also rejects a version number that isn't higher than the live one.
+
+### One-time setup
+1. **Get API credentials.** Follow the [chrome-webstore-upload-keys guide](https://github.com/fregante/chrome-webstore-upload-keys): create a Google Cloud project, enable the Chrome Web Store API, create an OAuth client, and generate a refresh token.
+2. **Find your IDs.** The extension ID is in the Developer Dashboard URL and on the item's page. The publisher ID is under the Dashboard's account settings.
+3. **Add repository secrets** under GitHub → Settings → Secrets and variables → Actions:
+   - `CWS_EXTENSION_ID`
+   - `CWS_PUBLISHER_ID`
+   - `CWS_CLIENT_ID`
+   - `CWS_CLIENT_SECRET`
+   - `CWS_REFRESH_TOKEN`
+
+### If a release fails
+- **Tag/version mismatch**: delete the tag (`git tag -d vX.Y.Z && git push origin :refs/tags/vX.Y.Z`), fix `package.json`, then tag again.
+- **Upload or publish step fails** (expired token, item still in review, and so on): fix the cause, then re-run the failed job from the Actions tab. You can also upload the zip from the GitHub Release by hand in the Developer Dashboard.
