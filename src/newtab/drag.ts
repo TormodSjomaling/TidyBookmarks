@@ -3,6 +3,7 @@ import { canDropOnto, moveIndex, type DragUnit, type DropPlace } from "../lib/dn
 import { isFolder } from "../lib/tree";
 import type { BookmarkNode } from "../lib/types";
 import { useDashboard } from "./dashboard";
+import { captureLayout } from "./glide";
 
 export function toUnit(node: BookmarkNode, containerKey: string): DragUnit {
   return { id: node.id, parentId: node.parentId ?? "", index: node.index ?? 0, containerKey, folder: isFolder(node) };
@@ -12,6 +13,7 @@ export function toUnit(node: BookmarkNode, containerKey: string): DragUnit {
 // different one. The tree re-reads itself from the resulting onMoved event (see
 // useBookmarkTree).
 export function applyReorder(source: DragUnit, target: DragUnit, place?: DropPlace) {
+  captureLayout();
   return chrome.bookmarks.move(source.id, { parentId: target.parentId, index: moveIndex(source, target, place) });
 }
 

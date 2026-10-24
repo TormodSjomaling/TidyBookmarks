@@ -7,6 +7,7 @@ import { ArchiveIcon, ChevronIcon, PencilIcon } from "../shared/icons";
 import { Bookmark } from "./Bookmark";
 import { faviconUrl, useDashboard } from "./dashboard";
 import { applyReorder, claim, isClaimed, toUnit, useDragSource } from "./drag";
+import { captureLayout } from "./glide";
 import { InlineEdit } from "./InlineEdit";
 
 // A list of bookmark tiles sharing one parent, as rendered inside a folder.
@@ -156,8 +157,12 @@ function Folder({ node, containerKey, depth }: FolderProps) {
           setDropMode(null);
           if (!mode || !source) return;
           e.preventDefault();
-          if (mode === "into") chrome.bookmarks.move(source.id, { parentId: node.id });
-          else applyReorder(source, unit, mode);
+          if (mode === "into") {
+            captureLayout();
+            chrome.bookmarks.move(source.id, { parentId: node.id });
+          } else {
+            applyReorder(source, unit, mode);
+          }
         },
       };
 

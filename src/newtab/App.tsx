@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { DragUnit } from "../lib/dnd";
 import { buildParentMap, isFolder, normalizeQuery, visibleChildren } from "../lib/tree";
 import type { BookmarkNode } from "../lib/types";
@@ -7,6 +7,7 @@ import { useSettings } from "../shared/settings";
 import { Bookmark } from "./Bookmark";
 import { DashboardContext, type Dashboard } from "./dashboard";
 import { FolderList } from "./Folder";
+import { playGlide } from "./glide";
 import { useBookmarkTree, useFolderMeta } from "./hooks";
 
 const DEFAULT_BOOKMARKS_KEY = "default";
@@ -27,6 +28,8 @@ export function App() {
   }, [searchText]);
 
   const parents = useMemo(() => buildParentMap(roots ?? []), [roots]);
+  // Animates our own drops once the re-read tree is on screen (glide.ts).
+  useLayoutEffect(playGlide, [roots]);
 
   // Marks the page as rendered, which turns on transitions that shouldn't play
   // while it first appears (see [data-ready] in newtab.css).
