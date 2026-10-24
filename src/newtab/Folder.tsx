@@ -128,16 +128,21 @@ function Folder({ node, containerKey }: FolderProps) {
     return mode;
   };
 
+  // Chrome asks on dragenter as well as dragover whether a drop is allowed
+  // here; a mouseup right after entering uses the dragenter answer.
+  const accept = (e: DragEvent<HTMLDivElement>) => {
+    const mode = resolveDrop(e);
+    setDropMode(mode);
+    if (!mode) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
   const dropProps = query
     ? {}
     : {
-        onDragOver: (e: DragEvent<HTMLDivElement>) => {
-          const mode = resolveDrop(e);
-          setDropMode(mode);
-          if (!mode) return;
-          e.preventDefault();
-          e.dataTransfer.dropEffect = "move";
-        },
+        onDragEnter: accept,
+        onDragOver: accept,
         onDragLeave: (e: DragEvent<HTMLDivElement>) => {
           // Moving onto one of this folder's own descendants isn't leaving it.
           if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropMode(null);

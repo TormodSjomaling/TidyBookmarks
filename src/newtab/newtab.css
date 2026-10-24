@@ -289,7 +289,8 @@ main#app {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-start;
-  gap: var(--row-gap);
+  --tile-gap: var(--row-gap);
+  gap: var(--tile-gap);
   margin: 0.5rem 0 1rem;
 }
 
@@ -315,9 +316,26 @@ main#app {
   opacity: 0.4;
 }
 
-.bookmark-item.drag-over {
-  outline: 2px dashed var(--accent);
-  outline-offset: 2px;
+/* Where a dragged bookmark will land: a vertical line centred in the gap
+   before or after the tile (offsets are from inside the tile's 1px border). */
+.bookmark-item.drop-before::before,
+.bookmark-item.drop-after::after {
+  content: "";
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  pointer-events: none;
+}
+
+.bookmark-item.drop-before::before {
+  left: calc(-1px - var(--tile-gap) / 2 - 1.5px);
+}
+
+.bookmark-item.drop-after::after {
+  right: calc(-1px - var(--tile-gap) / 2 - 1.5px);
 }
 
 .bookmark-link {
@@ -373,7 +391,7 @@ main#app {
 }
 
 .default-grid {
-  gap: 0.5rem;
+  --tile-gap: 0.5rem;
 }
 
 .bookmark-item.bookmark-item--compact {

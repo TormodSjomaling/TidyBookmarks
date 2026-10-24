@@ -33,7 +33,8 @@ export function Bookmark({ node, isDefault, containerKey }: Props) {
     compact && "bookmark-item--compact",
     editing && "bookmark-item--editing",
     dragging && "dragging",
-    over && "drag-over",
+    over === "before" && "drop-before",
+    over === "after" && "drop-after",
   ]
     .filter(Boolean)
     .join(" ");

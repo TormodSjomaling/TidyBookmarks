@@ -45,30 +45,46 @@ export function useDragSource(unit: DragUnit) {
   };
 }
 
+// Bookmark tiles sit in a row, so the pointer's side of the tile picks where
+// the dragged one lands: the left half before it, the right half after it.
+function placeAt(e: DragEvent): DropPlace {
+  const rect = e.currentTarget.getBoundingClientRect();
+  return e.clientX < rect.left + rect.width / 2 ? "before" : "after";
+}
+
 // Wiring for a bookmark as a reorder-only drop target. Bookmarks are never
-// "move into" targets; folders handle that themselves (Folder.tsx).
+// "move into" targets; folders handle that themselves (Folder.tsx). `over` is
+// where the dragged bookmark would land, for the insertion line.
 export function useReorderTarget(unit: DragUnit) {
   const { dragged } = useDashboard();
-  const [over, setOver] = useState(false);
+  const [over, setOver] = useState<DropPlace | null>(null);
+
+  // Chrome asks on dragenter as well as dragover whether a drop is allowed
+  // here; a mouseup right after entering uses the dragenter answer.
+  const accept = (e: DragEvent) => {
+    if (!canDropOnto(dragged.current, unit)) return;
+    claim(e);
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setOver(placeAt(e));
+  };
 
   return {
     over,
     targetProps: {
-      onDragOver: (e: DragEvent) => {
-        if (!canDropOnto(dragged.current, unit)) return;
-        claim(e);
-        e.preventDefault();
-        e.dataTransfer.dropEffect = "move";
-        setOver(true);
+      onDragEnter: accept,
+      onDragOver: accept,
+      onDragLeave: (e: DragEvent) => {
+        // Moving onto the tile's own favicon or link isn't leaving it.
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(null);
       },
-      onDragLeave: () => setOver(false),
       onDrop: (e: DragEvent) => {
-        setOver(false);
+        setOver(null);
         const source = dragged.current;
         if (!source || !canDropOnto(source, unit)) return;
         claim(e);
         e.preventDefault();
-        applyReorder(source, unit);
+        applyReorder(source, unit, placeAt(e));
       },
     },
   };

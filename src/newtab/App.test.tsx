@@ -15,6 +15,7 @@ const roots: BookmarkNode[] = [
         title: "Work",
         children: [
           { id: "jira", title: "Jira", url: "https://jira.example" },
+          { id: "wiki", title: "Wiki", url: "https://wiki.example" },
           { id: "acme", title: "Acme", children: [{ id: "inv", title: "Invoices", url: "https://billing.example" }] },
           { id: "old1", title: "Old client 1", children: [] },
           { id: "old2", title: "Old client 2", children: [] },
@@ -233,6 +234,40 @@ describe("new tab page", () => {
     await waitFor(() =>
       expect(document.querySelector('[data-bookmark-id="li"] a')!.getAttribute("title")).toBe("LinkedIn Jobs")
     );
+  });
+
+  describe("dragging bookmarks", () => {
+    const tile = (id: string) => document.querySelector(`[data-bookmark-id="${id}"]`)!;
+    const dataTransfer = { effectAllowed: "", dropEffect: "" };
+    const workOrder = () => fake.find("work")!.children!.map((c) => c.id);
+
+    beforeEach(async () => {
+      await renderApp();
+      // jsdom has no layout: give the target tile a box, 200px wide.
+      tile("wiki").getBoundingClientRect = () => ({ left: 100, right: 300, width: 200 }) as DOMRect;
+      tile("jira").getBoundingClientRect = () => ({ left: 100, right: 300, width: 200 }) as DOMRect;
+    });
+
+    it("shows a line on the side of the tile the pointer is on", () => {
+      fireEvent.dragStart(tile("jira"), { dataTransfer });
+      fireEvent.dragOver(tile("wiki"), { clientX: 120, dataTransfer });
+      expect(tile("wiki").classList.contains("drop-before")).toBe(true);
+      fireEvent.dragOver(tile("wiki"), { clientX: 280, dataTransfer });
+      expect(tile("wiki").classList.contains("drop-after")).toBe(true);
+      expect(tile("wiki").classList.contains("drop-before")).toBe(false);
+    });
+
+    it("drops after the tile from its right half", async () => {
+      fireEvent.dragStart(tile("jira"), { dataTransfer });
+      fireEvent.drop(tile("wiki"), { clientX: 280, dataTransfer });
+      await waitFor(() => expect(workOrder().slice(0, 2)).toEqual(["wiki", "jira"]));
+    });
+
+    it("drops before the tile from its left half", async () => {
+      fireEvent.dragStart(tile("wiki"), { dataTransfer });
+      fireEvent.drop(tile("jira"), { clientX: 120, dataTransfer });
+      await waitFor(() => expect(workOrder().slice(0, 2)).toEqual(["wiki", "jira"]));
+    });
   });
 
   describe("dragging folders", () => {
