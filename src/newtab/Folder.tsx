@@ -19,12 +19,23 @@ export function BookmarkGrid({ bookmarks, containerKey }: { bookmarks: BookmarkN
   );
 }
 
+// The top-level folders of every Chrome root render as one list, so folders
+// reorder across roots there (moving between e.g. the bookmarks bar and Other
+// bookmarks).
+const TOP_LEVEL_KEY = "folders:top";
+
 // Sibling folders under one parent: plain ones first in native order, then
 // archived ones, folded into a summary row once there are two or more.
-export function FolderList({ folders, parentId }: { folders: BookmarkNode[]; parentId: string }) {
+interface FolderListProps {
+  folders: BookmarkNode[];
+  parentId: string;
+  topLevel?: boolean;
+}
+
+export function FolderList({ folders, parentId, topLevel = false }: FolderListProps) {
   const { folderMeta, query } = useDashboard();
   const { individual, summarized } = groupFolders(folders, folderMeta, query);
-  const containerKey = `folders:${parentId}`;
+  const containerKey = topLevel ? TOP_LEVEL_KEY : `folders:${parentId}`;
 
   return (
     <>
@@ -91,8 +102,8 @@ function Folder({ node, containerKey }: FolderProps) {
 
   // The whole folder (header and contents) is a drop target. For a sibling
   // folder, the header's top edge drops before this folder, its middle drops
-  // into it, and anything below (the bottom edge of a collapsed header, or the
-  // open folder's contents) drops after it, so you can drag a folder past an
+  // into it, and anything below (the bottom edge of a collapsed or empty
+  // header, or an open folder's contents) drops after it, so you can drag past an
   // open one without aiming for a thin strip. Anything else (a bookmark, a
   // folder from elsewhere) can only be dropped into, anywhere on the header.
   // Archived folders can't be dragged themselves (their position is computed),
@@ -100,14 +111,15 @@ function Folder({ node, containerKey }: FolderProps) {
   const dropModeAt = (e: DragEvent): DragBand | null => {
     const source = dragged.current;
     const into = canDropInto(source, node.id, parents) ? "into" : null;
-    const sibling = canDropOnto(source, unit);
+    const sibling = canDropOnto(source, unit, containerKey === TOP_LEVEL_KEY);
     const header = headerRef.current!.getBoundingClientRect();
     if (e.clientY >= header.bottom) return sibling ? "after" : null;
     const band = dragBand(e.clientY, header.top, header.height);
     if (!sibling || band === "into") return into;
     // An open folder's header borders its own contents at the bottom, so a
-    // drop there reads as "into", not "after the whole folder".
-    if (band === "after" && !collapsed) return into;
+    // drop there reads as "into", not "after the whole folder". An open but
+    // empty folder has no contents to drop after it on, so it acts collapsed.
+    if (band === "after" && !collapsed && node.children?.length) return into;
     return band;
   };
 

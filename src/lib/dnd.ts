@@ -1,8 +1,9 @@
 import { isSelfOrDescendant, type ParentMap } from "./tree";
 
 // A drag source or target. `containerKey` identifies the rendered list it sits
-// in; reordering requires the same list *and* the same real parent, because the
-// default-bookmarks row combines children of several Chrome roots into one list.
+// in. Lists can combine children of several Chrome roots (the default-bookmarks
+// row, the top-level folders), so reordering also checks the real parent unless
+// the list allows moving across parents.
 export interface DragUnit {
   id: string;
   parentId: string;
@@ -11,12 +12,12 @@ export interface DragUnit {
   containerKey: string;
 }
 
-export function canDropOnto(dragged: DragUnit | null, target: DragUnit): boolean {
+export function canDropOnto(dragged: DragUnit | null, target: DragUnit, acrossParents = false): boolean {
   return (
     dragged !== null &&
     dragged.id !== target.id &&
     dragged.containerKey === target.containerKey &&
-    dragged.parentId === target.parentId
+    (acrossParents || dragged.parentId === target.parentId)
   );
 }
 
@@ -40,9 +41,10 @@ export type DropPlace = "before" | "after";
 
 // The index to pass to chrome.bookmarks.move to put `dragged` right before or
 // after its sibling `target`. Without a place (bookmark tiles), dragging forward
-// lands after the target and dragging backward lands before it. Chrome counts a
-// same-parent index against the list before the moved node is taken out, so
-// this is just the target's own position, or the one after it.
+// lands after the target and dragging backward lands before it (only used
+// within one parent). Chrome counts a same-parent index against the list before
+// the moved node is taken out, so whether or not the parent changes, this is
+// just the target's own position, or the one after it.
 export function moveIndex(dragged: DragUnit, target: DragUnit, place?: DropPlace): number {
   const where = place ?? (dragged.index < target.index ? "after" : "before");
   return where === "before" ? target.index : target.index + 1;

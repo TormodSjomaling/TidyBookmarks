@@ -23,7 +23,14 @@ const roots: BookmarkNode[] = [
       { id: "personal", title: "Personal", children: [{ id: "bank", title: "Bank", url: "https://bank.example" }] },
     ],
   },
-  { id: "2", title: "Other bookmarks", children: [{ id: "li", title: "LinkedIn", url: "https://linkedin.com" }] },
+  {
+    id: "2",
+    title: "Other bookmarks",
+    children: [
+      { id: "li", title: "LinkedIn", url: "https://linkedin.com" },
+      { id: "reading", title: "Reading", children: [] },
+    ],
+  },
 ];
 
 let fake: FakeChrome;
@@ -241,12 +248,14 @@ describe("new tab page", () => {
       fireEvent.dragEnd(header(fromId), { dataTransfer });
     };
     const barOrder = () => fake.find("1")!.children!.map((c) => c.id);
+    const otherOrder = () => fake.find("2")!.children!.map((c) => c.id);
 
     beforeEach(async () => {
       await renderApp();
       placeHeader("work", 100);
       placeHeader("acme", 200);
       placeHeader("personal", 400);
+      placeHeader("reading", 600);
     });
 
     it("drops after an open sibling from anywhere in its contents, leaving loose bookmarks in place", async () => {
@@ -257,6 +266,17 @@ describe("new tab page", () => {
     it("drops before a sibling from the top edge of its header", async () => {
       drag("personal", header("work"), 105);
       await waitFor(() => expect(barOrder()).toEqual(["g", "personal", "work"]));
+    });
+
+    it("reorders top-level folders across Chrome roots, moving them to the target's root", async () => {
+      drag("reading", header("work"), 105);
+      await waitFor(() => expect(barOrder()).toEqual(["g", "reading", "work", "personal"]));
+      expect(otherOrder()).toEqual(["li"]);
+    });
+
+    it("moves a top-level folder after one in the other root", async () => {
+      drag("work", header("reading"), 638);
+      await waitFor(() => expect(otherOrder()).toEqual(["li", "reading", "work"]));
     });
 
     it("moves into a sibling from the middle of its header", async () => {

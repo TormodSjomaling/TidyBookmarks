@@ -7,10 +7,11 @@ export function toUnit(node: BookmarkNode, containerKey: string): DragUnit {
   return { id: node.id, parentId: node.parentId ?? "", index: node.index ?? 0, containerKey };
 }
 
-// Moves `source` next to its sibling `target` in Chrome. The tree re-reads
-// itself from the resulting onMoved event (see useBookmarkTree).
+// Moves `source` next to `target` in Chrome, into `target`'s parent if that's a
+// different one. The tree re-reads itself from the resulting onMoved event (see
+// useBookmarkTree).
 export function applyReorder(source: DragUnit, target: DragUnit, place?: DropPlace) {
-  return chrome.bookmarks.move(source.id, { index: moveIndex(source, target, place) });
+  return chrome.bookmarks.move(source.id, { parentId: target.parentId, index: moveIndex(source, target, place) });
 }
 
 // Folders nest, so a drag event over an inner folder bubbles up through its

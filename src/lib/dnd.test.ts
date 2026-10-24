@@ -21,6 +21,11 @@ describe("canDropOnto", () => {
     // Same visual row, different real parent (the default-bookmarks row).
     expect(canDropOnto(unit("a", "bar", "default"), unit("b", "other", "default"))).toBe(false);
   });
+
+  it("allows another parent in the same list when the list spans parents", () => {
+    expect(canDropOnto(unit("a", "bar", "top"), unit("b", "other", "top"), true)).toBe(true);
+    expect(canDropOnto(unit("a", "bar", "top"), unit("b", "other", "elsewhere"), true)).toBe(false);
+  });
 });
 
 describe("canDropInto", () => {
